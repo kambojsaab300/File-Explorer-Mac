@@ -1,0 +1,11 @@
+flowchart TD
+  A(["Select items"]) --> B{Key}
+  B -- Delete / ⌘⌫ --> C["shell.trashItem → macOS Trash<br/>no confirmation, like Windows 11"]
+  B -- Shift+Delete --> D["Dialog: Permanently delete?"]
+  D -- Yes --> E["fs.rm recursive"]
+  D -- No --> X(["Cancel"])
+  C --> U["Push Undo entry"]
+  U --> Z(["Ctrl+Z → Put back from Trash"])
+  C --> T["Trash in nav pane shows full icon"]
+  T --> TR["Trash view: Put back / Delete immediately / Empty Trash"]
+  B -- on external drive --> V["Volume's .Trashes folder<br/>same behaviour"]

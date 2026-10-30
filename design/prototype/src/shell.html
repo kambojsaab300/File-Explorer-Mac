@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Khoj — clickable prototype (Windows-style file explorer for macOS)</title>
+<style>
+/*@@TOKENS@@*/
+/*@@APPCSS@@*/
+</style>
+</head>
+<body>
+<!--@@SPRITE@@-->
+<div id="desktop">
+  <div id="macbar"><b>Khoj</b><span>File</span><span>Edit</span><span>View</span><span>Go</span><span>Window</span><span>Help</span><span class="right"><span>Fri 30 Oct</span><span>15:05</span></span></div>
+  <div class="window" id="win">
+    <div class="tabstrip">
+      <div class="lights"><i></i><i></i><i></i></div>
+      <div class="tabs" id="tabs"></div>
+      <button class="newtab" id="newtab" title="New tab (Ctrl+T)"><span><svg class="ui" width="16" height="16"><use href="#u-plus"/></svg></span></button>
+      <div class="drag"></div>
+      <div class="captions">
+        <button id="cap-min" title="Minimise"><svg class="ui" width="14" height="14"><use href="#u-minimize"/></svg></button>
+        <button id="cap-max" title="Maximise"><svg class="ui" width="13" height="13"><use href="#u-maximize"/></svg></button>
+        <button id="cap-close" class="close" title="Close"><svg class="ui" width="14" height="14"><use href="#u-close"/></svg></button>
+      </div>
+    </div>
+    <div class="addressrow">
+      <div class="navbtns">
+        <button class="navbtn" id="bk" title="Back (Alt+Left Arrow)"><svg class="ui" width="16" height="16"><use href="#u-back"/></svg></button>
+        <button class="navbtn" id="fw" title="Forward (Alt+Right Arrow)"><svg class="ui" width="16" height="16"><use href="#u-forward"/></svg></button>
+        <button class="navbtn" id="upb" title="Up to parent (Alt+Up Arrow)"><svg class="ui" width="16" height="16"><use href="#u-up"/></svg></button>
+        <button class="navbtn" id="rf" title="Refresh (F5)"><svg class="ui" width="16" height="16"><use href="#u-refresh"/></svg></button>
+      </div>
+      <div class="addr" id="addr"></div>
+      <div class="search"><input id="searchIn" spellcheck="false" placeholder="Search"><svg class="ui" width="16" height="16"><use href="#u-search"/></svg></div>
+    </div>
+    <div class="commandbar" id="cmdbar"></div>
+    <div class="body">
+      <nav class="nav" id="nav" tabindex="0"></nav>
+      <div class="splitter" id="split"></div>
+      <section class="main" id="main" tabindex="0"></section>
+      <aside class="details" id="details"></aside>
+    </div>
+    <div class="statusbar" id="status"></div>
+  </div>
+</div>
+<script>
+/*@@APPJS@@*/
+</script>
+</body>
+</html>

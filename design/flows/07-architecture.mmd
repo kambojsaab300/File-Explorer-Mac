@@ -1,0 +1,28 @@
+flowchart TB
+  subgraph R["Renderer process — React + TypeScript (the Windows-style UI)"]
+    direction LR
+    UI["Window chrome · tabs · address bar · command bar<br/>nav tree · file views · details pane · dialogs"]
+    ST[("Zustand store<br/>tabs · selection · clipboard · settings")]
+    UI <--> ST
+  end
+  subgraph P["Preload — contextBridge (no Node in the UI)"]
+    API["window.khoj = { fs, ops, volumes, shell, icons, settings, events }"]
+  end
+  subgraph M["Main process — Node.js services"]
+    direction LR
+    IPC["IPC router<br/>ipcMain.handle + input validation"]
+    FSV["FileSystem<br/>list · stat · mkdir · rename"]
+    OPS["Operation queue<br/>copy · move · delete<br/>progress · pause · cancel"]
+    WAT["Watcher<br/>@parcel/watcher (FSEvents)"]
+    VOL["Volumes<br/>statfs · mount events · drive letters"]
+    ICO["Icons & thumbnails<br/>getFileIcon · createThumbnailFromPath"]
+    SH["Shell bridge<br/>openPath · trashItem · previewFile · startDrag"]
+    SET[("Settings<br/>JSON in ~/Library/Application Support/Khoj")]
+    IPC --> FSV & OPS & VOL & ICO & SH & SET
+  end
+  OS[("macOS<br/>APFS · exFAT · SMB · Trash · Quick Look · TCC privacy")]
+  UI -- "calls" --> API
+  API -- "ipcRenderer.invoke" --> IPC
+  WAT -- "change events" --> API
+  OPS -- "progress events" --> API
+  FSV & OPS & WAT & VOL & SH --> OS

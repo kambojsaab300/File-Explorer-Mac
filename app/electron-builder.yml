@@ -1,0 +1,30 @@
+appId: com.khoj.explorer
+productName: Khoj
+directories: { output: dist, buildResources: build }
+files: ["out/**", "package.json"]
+asar: true
+mac:
+  category: public.app-category.productivity
+  target:
+    # Owner's Mac is an M1; switch to universal if Intel Macs need it.
+    - { target: dmg, arch: [arm64] }
+  icon: build/icon.icns
+  # Personal unsigned build. For distribution: set an identity, hardenedRuntime: true, notarize: true.
+  identity: null
+  hardenedRuntime: false
+  notarize: false
+  minimumSystemVersion: "13.0"
+  extendInfo:
+    NSDesktopFolderUsageDescription: Khoj needs access to your Desktop folder to show and manage your files.
+    NSDocumentsFolderUsageDescription: Khoj needs access to your Documents folder to show and manage your files.
+    NSDownloadsFolderUsageDescription: Khoj needs access to your Downloads folder to show and manage your files.
+    NSRemovableVolumesUsageDescription: Khoj needs access to USB and external drives to show and manage files on them.
+    NSNetworkVolumesUsageDescription: Khoj needs access to network drives to show and manage files on them.
+dmg:
+  title: "Khoj ${version}"
+  background: build/dmg-background.png
+  iconSize: 96
+  window: { width: 660, height: 400 }
+  contents:
+    - { x: 180, y: 200 }
+    - { x: 480, y: 200, type: link, path: /Applications }

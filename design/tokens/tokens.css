@@ -1,0 +1,136 @@
+/* Khoj design tokens — CSS custom properties.
+   Generated from tokens.json. Dark is the default; set data-theme="light" on <html> for light.
+   Follow the OS automatically with: matchMedia('(prefers-color-scheme: dark)'). */
+
+:root {
+  /* ---------- typography ---------- */
+  --font-ui: "Segoe UI Variable Text", "Segoe UI", "Selawik", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --font-display: "Segoe UI Variable Display", "Segoe UI", "Selawik", -apple-system, system-ui, sans-serif;
+  --font-mono: "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
+  --text-scale: 1;
+  --fs-item: calc(12px * var(--text-scale));     --lh-item: calc(16px * var(--text-scale));
+  --fs-body: calc(14px * var(--text-scale));     --lh-body: calc(20px * var(--text-scale));
+  --fs-subtitle: calc(20px * var(--text-scale)); --lh-subtitle: calc(28px * var(--text-scale));
+  --fs-title: calc(28px * var(--text-scale));    --lh-title: calc(36px * var(--text-scale));
+
+  /* ---------- geometry ---------- */
+  --radius-control: 4px;
+  --radius-overlay: 8px;
+  --tabstrip-h: 32px;
+  --tab-w: 240px;
+  --caption-btn-w: 46px;
+  --addressrow-h: 48px;
+  --addressbox-h: 32px;
+  --navbtn-w: 40px;
+  --commandbar-h: 48px;
+  --nav-w: 300px;
+  --nav-item-h: 32px;
+  --nav-indent: 8px;
+  --row-h: 32px;
+  --row-h-compact: 24px;
+  --row-h-content: 48px;
+  --details-w: 320px;
+  --statusbar-h: 24px;
+
+  /* ---------- motion ---------- */
+  --dur-fast: 83ms;
+  --dur-normal: 167ms;
+  --dur-slow: 250ms;
+  --ease: cubic-bezier(0.1, 0.9, 0.2, 1);
+
+  /* ---------- colour: DARK (default) ---------- */
+  --c-tabstrip: #202020;
+  --c-tab-active: #2c2c2c;
+  --c-tab-hover: #2a2a2a;
+  --c-addressrow: #2c2c2c;
+  --c-input: #383838;
+  --c-input-border: transparent;
+  --c-input-hover: #3d3d3d;
+  --c-input-focus: #1f1f1f;
+  --c-accent: #60cdff;
+  --c-accent-text: #99ebff;
+  --c-commandbar: #191919;
+  --c-content: #191919;
+  --c-statusbar: #1c1c1c;
+  --c-divider: #2b2b2b;
+  --c-divider-strong: #3a3a3a;
+  --c-nav-divider: #383838;
+  --c-text: #ffffff;
+  --c-text-2: #cfcfcf;
+  --c-text-3: #9d9d9d;
+  --c-text-disabled: #5b5a5a;
+  --c-placeholder: #d2d2d2;
+  --c-hover: #2d2d2d;
+  --c-pressed: #292929;
+  --c-selected: #505050;
+  --c-selected-border: transparent;
+  --c-selected-hover: #5a5a5a;
+  --c-selected-inactive: #333333;
+  --c-focus: #c3c3c3;
+  --c-bar-fill: #0070cb;
+  --c-bar-track: #e6e6e6;
+  --c-bar-border: #bcbcbc;
+  --c-bar-low: #da2626;
+  --c-caption-hover: #2d2d2d;
+  --c-close-hover: #c42b1c;
+  --c-overlay: #2c2c2c;
+  --c-overlay-border: #3d3d3d;
+  --c-dialog: #2b2b2b;
+  --c-dialog-footer: #202020;
+  --c-scrim: rgba(0, 0, 0, .30);
+  --c-success: #6ccb5f;
+  --c-caution: #fce100;
+  --c-critical: #ff99a4;
+  --shadow-flyout: 0 8px 16px rgba(0, 0, 0, .36), 0 0 2px rgba(0, 0, 0, .3);
+  --shadow-dialog: 0 32px 64px rgba(0, 0, 0, .45), 0 2px 21px rgba(0, 0, 0, .35);
+  color-scheme: dark;
+}
+
+/* ---------- colour: LIGHT ---------- */
+[data-theme="light"] {
+  --c-tabstrip: #eef1f5;
+  --c-tab-active: #f9f9f9;
+  --c-tab-hover: #f3f5f8;
+  --c-addressrow: #f9f9f9;
+  --c-input: #ffffff;
+  --c-input-border: #e5e5e5;
+  --c-input-hover: #fdfdfd;
+  --c-input-focus: #ffffff;
+  --c-accent: #005fb8;
+  --c-accent-text: #003e92;
+  --c-commandbar: #ffffff;
+  --c-content: #ffffff;
+  --c-statusbar: #ffffff;
+  --c-divider: #ebebeb;
+  --c-divider-strong: #e0e0e0;
+  --c-nav-divider: #e5e5e5;
+  --c-text: #1b1b1b;
+  --c-text-2: #5d5d5d;
+  --c-text-3: #8a8a8a;
+  --c-text-disabled: #a0a0a0;
+  --c-placeholder: #6e6e6e;
+  --c-hover: #e5f3ff;
+  --c-pressed: #d8ecff;
+  --c-selected: #cce8ff;
+  --c-selected-border: #99d1ff;
+  --c-selected-hover: #c2e3ff;
+  --c-selected-inactive: #d9d9d9;
+  --c-focus: #6e6e6e;
+  --c-bar-fill: #26a0da;
+  --c-bar-track: #e6e6e6;
+  --c-bar-border: #bcbcbc;
+  --c-bar-low: #da2626;
+  --c-caption-hover: #e9e9e9;
+  --c-close-hover: #c42b1c;
+  --c-overlay: #f9f9f9;
+  --c-overlay-border: #e0e0e0;
+  --c-dialog: #ffffff;
+  --c-dialog-footer: #f3f3f3;
+  --c-scrim: rgba(0, 0, 0, .20);
+  --c-success: #0f7b0f;
+  --c-caution: #9d5d00;
+  --c-critical: #c42b1c;
+  --shadow-flyout: 0 8px 16px rgba(0, 0, 0, .14), 0 0 2px rgba(0, 0, 0, .12);
+  --shadow-dialog: 0 32px 64px rgba(0, 0, 0, .28), 0 2px 21px rgba(0, 0, 0, .22);
+  color-scheme: light;
+}

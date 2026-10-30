@@ -1,0 +1,47 @@
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body {
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  color: var(--c-text);
+  background: var(--c-content);
+  overflow: hidden;
+  user-select: none;
+}
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: default; }
+svg { flex: none; fill: currentColor; }
+
+.window { height: 100%; display: flex; flex-direction: column; }
+.content-area { flex: 1; background: var(--c-content); }
+
+/* Tab strip doubles as the window drag region; anything clickable opts out. */
+.tabstrip {
+  height: var(--tabstrip-h);
+  flex: none;
+  display: flex;
+  align-items: stretch;
+  background: var(--c-tabstrip);
+  padding-left: 8px;
+  -webkit-app-region: drag;
+}
+.tabstrip button, .tab { -webkit-app-region: no-drag; }
+
+.tab {
+  width: var(--tab-w);
+  margin-top: 4px;
+  padding: 0 4px 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: var(--radius-control) var(--radius-control) 0 0;
+}
+.tab.active { background: var(--c-tab-active); }
+.tab-title { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.tab-close, .tab-new { width: 28px; height: 24px; display: grid; place-items: center; border-radius: var(--radius-control); align-self: center; }
+.tab-close:hover, .tab-new:hover { background: var(--c-hover); }
+.tab-new { margin-left: 4px; }
+
+.captions { margin-left: auto; display: flex; }
+.captions button { width: var(--caption-btn-w); height: var(--tabstrip-h); display: grid; place-items: center; }
+.captions button:hover { background: var(--c-caption-hover); }
+.captions button.close:hover { background: var(--c-close-hover); color: #fff; }

@@ -1,0 +1,13 @@
+flowchart TD
+  A(["App start / mount event"]) --> B["List volumes: / + /Volumes/*"]
+  B --> C["Read volume UUID + size + free + fs type"]
+  C --> D{UUID in letter map?}
+  D -- Yes --> E["Reuse saved letter"]
+  D -- No --> F["Assign next free letter D:…Z:<br/>Macintosh HD is always C:"]
+  E --> G["Show tile: icon, 'Name (E:)', usage bar, 'x GB free of y GB'"]
+  F --> G
+  G --> H{Free < 10%?}
+  H -- Yes --> I["Bar turns red"]
+  G --> J(["Right-click → Eject → diskutil eject"])
+  G --> K(["Properties → Change drive letter…"])
+  L(["Drive unplugged"]) --> M["Remove tile + close tabs on that drive<br/>→ navigate to This PC"]

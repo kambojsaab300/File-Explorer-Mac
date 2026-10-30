@@ -1,0 +1,10 @@
+flowchart TD
+  A(["F2 / Rename button / slow double-click"]) --> B["Inline edit box<br/>name selected WITHOUT extension"]
+  B --> C{Enter / click away}
+  B -- Esc --> X(["Cancel"])
+  C --> D{Valid?}
+  D -- contains / or : --> E["Tooltip: A file name can't contain / :"]
+  D -- name taken --> F["Dialog: already a file with this name<br/>Keep both? → 'name (2)'"]
+  D -- extension changed --> G["Dialog: If you change a file name extension,<br/>the file might become unusable. Change it?"]
+  D -- ok --> H["fs.rename → push Undo"]
+  E --> B

@@ -1,0 +1,26 @@
+flowchart TD
+  S(["Select items"]) --> C{Cut or Copy?}
+  C -- Ctrl+C --> CL1["Clipboard = copy + paths<br/>also written to macOS pasteboard as file URLs"]
+  C -- Ctrl+X --> CL2["Clipboard = move<br/>items shown at 50% opacity"]
+  CL1 --> P(["Ctrl+V in destination"])
+  CL2 --> P
+  DD(["Drag & drop"]) --> R{Same volume?}
+  R -- Yes --> MV["Move"]
+  R -- No --> CP["Copy"]
+  R -- Cmd/Shift held --> OVR["Modifier overrides rule"]
+  P --> X{Name exists in destination?}
+  MV --> X
+  CP --> X
+  X -- Same folder copy --> AUTO["Auto-name 'name - Copy.ext'"]
+  X -- Different folder --> RS["Replace or Skip Files dialog"]
+  RS -- Replace --> DO
+  RS -- Skip --> NEXT["Next item"]
+  RS -- Keep both --> REN["'name (2).ext'"] --> DO
+  X -- No conflict --> DO
+  AUTO --> DO
+  DO{Total > 40 MB or > 50 items?}
+  DO -- Yes --> PROG["Progress dialog: % complete, speed chart,<br/>time & items remaining, Pause / Cancel"]
+  DO -- No --> FAST["Silent operation"]
+  PROG --> DONE(["Done → select new items, push Undo entry"])
+  FAST --> DONE
+  PROG -- Error EACCES/EPERM --> ERR["Permission dialog: Try again / Skip / Cancel<br/>EPERM = TCC → offer Privacy settings"]

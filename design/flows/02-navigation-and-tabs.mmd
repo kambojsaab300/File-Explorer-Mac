@@ -1,0 +1,16 @@
+flowchart LR
+  subgraph Window
+    T["Tab strip"] --> AR["Address row"]
+    AR --> CB["Command bar"]
+    CB --> BODY["Nav pane | File view | Details pane"]
+    BODY --> SB["Status bar"]
+  end
+  NAVCLICK(["Click nav item / breadcrumb / double-click folder"]) --> GO["go(location)"]
+  ADDR(["Type in address bar: E:\\Dev or /Volumes/MyDATA/Dev or ~"]) --> PARSE["parseInput → POSIX path"] --> GO
+  GO --> HIST["Push onto tab history<br/>clear selection + search"]
+  HIST --> LIST["fs.list(path) via IPC"]
+  LIST --> WATCH["Start watcher on folder"]
+  LIST --> RENDER["Render view: Details / Content / Tiles / Icons / List"]
+  BACK(["Alt+← / Backspace"]) --> HB["history index − 1"] --> LIST
+  UP(["Alt+↑"]) --> PARENT["parent folder<br/>volume root → This PC"] --> GO
+  NEWTAB(["Ctrl+T / middle-click folder"]) --> NT["New tab at Home"] --> GO

@@ -1,0 +1,18 @@
+flowchart TD
+  A(["User opens Khoj.dmg"]) --> B["Drag Khoj into Applications"]
+  B --> C(["First launch"])
+  C --> D{Signed and notarized?}
+  D -- No --> D1["Gatekeeper warning<br/>Right-click → Open once"] --> E
+  D -- Yes --> E["Welcome / onboarding dialog"]
+  E --> F["Choose keyboard: Ctrl / ⌘ / Both"]
+  F --> G["Choose window buttons: Windows / macOS"]
+  G --> H["Allow Desktop, Documents, Downloads"]
+  H --> I{macOS TCC prompt per folder}
+  I -- Allow --> J["Folder readable"]
+  I -- Don't Allow --> K["Show 'No access' empty state<br/>+ button 'Open Privacy settings'"]
+  J --> L{Optional: Full Disk Access?}
+  L -- Skip --> M(["Open This PC"])
+  L -- Open System Settings --> N["x-apple.systempreferences:…Privacy_AllFiles<br/>user toggles Khoj ON → restart app"]
+  N --> M
+  M --> O["External drive plugged in"] --> P{First access to removable volume}
+  P -- Allow --> Q["Drive appears under This PC with letter D:, E:…"]
