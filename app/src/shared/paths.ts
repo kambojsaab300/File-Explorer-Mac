@@ -6,6 +6,7 @@ import type { Path, SpecialLocation, Volume } from './types'
 export const SPECIAL_LABELS: Record<SpecialLocation, string> = {
   home: 'Home',
   gallery: 'Gallery',
+  recent: 'Recent files',
   thispc: 'This PC',
   network: 'Network',
   trash: 'Trash'
@@ -82,6 +83,7 @@ export function parseDisplay(input: string, vols: Volume[], home: Path): Path | 
   }
   if (low === 'recycle bin') return 'trash'
   if (low === 'this mac' || low === 'computer') return 'thispc'
+  if (low === 'recent files' || low === 'recents') return 'recent'
 
   if (s === '~' || s.startsWith('~/') || s.startsWith('~\\')) s = home + s.slice(1)
 

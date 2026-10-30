@@ -7,6 +7,9 @@ import { getSetting } from './services/settings.service'
 // Native desktop graphics & I/O performance switches
 app.commandLine.appendSwitch('enable-gpu-rasterization')
 app.commandLine.appendSwitch('enable-zero-copy')
+app.commandLine.appendSwitch('disable-renderer-backgrounding')
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
+app.commandLine.appendSwitch('ignore-gpu-blocklist')
 
 const open = (): BrowserWindow => createMainWindow({ macButtons: getSetting<boolean>('macButtons') ?? false })
 

@@ -60,6 +60,7 @@ function PaneContent({ tab }: { tab: Tab }) {
   if (loc === 'thispc') body = <ThisPC />
   else if (loc === 'home') body = <Home />
   else if (loc === 'gallery') body = <Gallery />
+  else if (loc === 'recent') body = <RecentView />
   else if (loc === 'network') body = <NetworkView />
   else if (loc === 'trash') body = <FolderView />
   else if (isSpecial(loc)) body = <Placeholder loc={loc} />
@@ -297,12 +298,15 @@ function Home() {
         ))}
       </div>
 
-      <div className="pills" style={{ marginTop: 12 }}>
+      <div className="pills" style={{ marginTop: 12, display: 'flex', alignItems: 'center' }}>
         <button className={`pill${tab === 'recent' ? ' on' : ''}`} onClick={() => setTab('recent')}>
           Recent
         </button>
         <button className={`pill${tab === 'favorites' ? ' on' : ''}`} onClick={() => setTab('favorites')}>
           Favorites
+        </button>
+        <button className="recent-see-all-btn" onClick={() => go('recent')}>
+          See all recent files →
         </button>
       </div>
 
@@ -364,6 +368,154 @@ function Home() {
           Right-click any folder to pin it to Quick access, or star files to see them here.
         </div>
       )}
+    </div>
+  )
+}
+
+function RecentView() {
+  const { places, volumes, selectTab, refreshing } = useStore()
+  const activeTab = useTab()
+  const [filter, setFilter] = useState<'all' | 'documents' | 'pictures' | 'media' | 'code' | 'downloads'>('all')
+  const [files, setFiles] = useState<Entry[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadRecent(): Promise<void> {
+      if (!places) return
+      setLoading(true)
+      try {
+        const targets = [places.desktop, places.documents, places.downloads, places.pictures, places.music, places.videos].filter(Boolean)
+        const lists = await Promise.all(targets.map((dir) => api.fs.list(dir).catch(() => [])))
+        if (cancelled) return
+        const allFiles = lists.flat().filter((e) => e.kind === 'file')
+        allFiles.sort((a, b) => b.mtimeMs - a.mtimeMs)
+        const seen = new Set<string>()
+        const unique = allFiles.filter((f) => {
+          if (seen.has(f.path)) return false
+          seen.add(f.path)
+          return true
+        })
+        setFiles(unique.slice(0, 50))
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    void loadRecent()
+    return () => {
+      cancelled = true
+    }
+  }, [places, refreshing])
+
+  const filtered = useMemo(() => {
+    if (filter === 'all') return files
+    if (filter === 'downloads') {
+      return files.filter((f) => places?.downloads && f.path.startsWith(places.downloads))
+    }
+    const docExts = new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'md', 'rtf'])
+    const picExts = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'svg', 'bmp'])
+    const mediaExts = new Set(['mp4', 'mov', 'mkv', 'avi', 'mp3', 'wav', 'm4a', 'flac'])
+    const codeExts = new Set(['ts', 'tsx', 'js', 'jsx', 'py', 'json', 'html', 'css', 'rs', 'go', 'sh', 'sql', 'yaml', 'yml'])
+
+    return files.filter((f) => {
+      const ext = f.ext.toLowerCase()
+      if (filter === 'documents') return docExts.has(ext)
+      if (filter === 'pictures') return picExts.has(ext)
+      if (filter === 'media') return mediaExts.has(ext)
+      if (filter === 'code') return codeExts.has(ext)
+      return true
+    })
+  }, [files, filter, places])
+
+  return (
+    <div className="scroll">
+      <div className="recent-header">
+        <div className="recent-title-group">
+          <Icon name="i-recent" size={24} />
+          <div>
+            <div className="recent-title">Recent files</div>
+            <div className="recent-sub">Files you recently created, downloaded, or edited</div>
+          </div>
+        </div>
+        <div className="recent-actions">
+          <span className="recent-count">{filtered.length} items</span>
+        </div>
+      </div>
+
+      <div className="pills" style={{ margin: '8px 12px 14px' }}>
+        {(['all', 'documents', 'pictures', 'media', 'code', 'downloads'] as const).map((k) => (
+          <button key={k} className={`pill${filter === k ? ' on' : ''}`} onClick={() => setFilter(k)}>
+            {{
+              all: 'All',
+              documents: 'Documents',
+              pictures: 'Pictures',
+              media: 'Media',
+              code: 'Code',
+              downloads: 'Downloads'
+            }[k]}
+          </button>
+        ))}
+      </div>
+
+      <div className="v-details" style={{ margin: '0 12px 24px' }}>
+        <div className="hdr">
+          <div>Name</div>
+          <div>Date modified</div>
+          <div>Location</div>
+          <div>Size</div>
+        </div>
+        <div className="items">
+          {filtered.map((e) => (
+            <div
+              key={e.path}
+              className={`it${activeTab.sel.includes(e.path) ? ' sel' : ''}`}
+              onMouseDown={(ev) => {
+                if (ev.button === 2 && !activeTab.sel.includes(e.path)) {
+                  selectTab(activeTab.id, [e.path], e.path)
+                }
+              }}
+              onClick={(ev) => {
+                if (ev.ctrlKey || ev.metaKey) {
+                  selectTab(
+                    activeTab.id,
+                    activeTab.sel.includes(e.path) ? activeTab.sel.filter((p) => p !== e.path) : [...activeTab.sel, e.path],
+                    e.path
+                  )
+                } else {
+                  selectTab(activeTab.id, [e.path], e.path)
+                }
+              }}
+              onDoubleClick={() => openEntry(e)}
+              onContextMenu={(ev) => {
+                ev.preventDefault()
+                ev.stopPropagation()
+                if (!activeTab.sel.includes(e.path)) {
+                  selectTab(activeTab.id, [e.path], e.path)
+                }
+                openMenu(ev, 'item')
+              }}
+            >
+              <div>
+                <EntryIcon entry={e} />
+                <span className="nm">{e.name}</span>
+              </div>
+              <div>{fmtDate(e.mtimeMs)}</div>
+              <div>{toDisplay(parentOf(e.path) ?? '/', volumes)}</div>
+              <div>{kbSize(e.size)}</div>
+            </div>
+          ))}
+          {!filtered.length && !loading && (
+            <div className="empty" style={{ padding: '36px 0' }}>
+              No recent {filter === 'all' ? '' : filter} files found.
+            </div>
+          )}
+          {loading && (
+            <div className="empty" style={{ padding: '24px 0' }}>
+              Scanning recent files…
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
@@ -577,19 +729,20 @@ function FolderView() {
   const tab = useTab()
   const items = useMemo(() => sortedItems(tab), [tab.items, tab.results, tab.sort, tab.search])
   const order = useMemo(() => items.map((e) => e.path), [items])
+  const selSet = useMemo(() => new Set(tab.sel), [tab.sel])
   const onClick = useClickSelect(order)
   const selectTab = useStore((s) => s.selectTab)
   const clipboard = useOps((s) => s.clipboard)
-  const cut = new Set(clipboard?.cut ? clipboard.paths : [])
+  const cut = useMemo(() => new Set(clipboard?.cut ? clipboard.paths : []), [clipboard])
 
   if (tab.status === 'loading' && !tab.items.length) return <div className="empty">Working on it…</div>
 
   const itemProps = (e: Entry) => ({
-    className: `it${tab.sel.includes(e.path) ? ' sel' : ''}${cut.has(e.path) ? ' cut' : ''}`,
+    className: `it${selSet.has(e.path) ? ' sel' : ''}${cut.has(e.path) ? ' cut' : ''}`,
     onMouseDown: (ev: React.MouseEvent) => {
       // In Windows: Right-click selects an unselected item immediately on mousedown
       if (ev.button === 2) {
-        if (!tab.sel.includes(e.path)) {
+        if (!selSet.has(e.path)) {
           selectTab(tab.id, [e.path], e.path)
         }
       } else if (ev.button === 1) {
@@ -610,7 +763,7 @@ function FolderView() {
     onContextMenu: (ev: React.MouseEvent) => {
       ev.preventDefault()
       ev.stopPropagation()
-      if (!tab.sel.includes(e.path)) {
+      if (!selSet.has(e.path)) {
         selectTab(tab.id, [e.path], e.path)
       }
       openMenu(ev, 'item')

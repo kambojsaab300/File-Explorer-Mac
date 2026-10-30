@@ -70,7 +70,7 @@ flowchart LR
 - Every tab has its own history stack, selection, view mode and sort.
 - Single-click in the nav pane navigates. The chevron only expands or collapses.
 - **Up** from a volume root goes to This PC. Up from `~` goes to Macintosh HD › Users.
-- The address bar accepts: `C:\Users\you`, `E:\Dev`, `/Volumes/MyDATA/Dev`, `~`, `~/Downloads`, `This PC`, `Home`, `Gallery`, `Network`, `Trash` / `Recycle Bin`, and `smb://server/share` (mounts the share).
+- The address bar accepts: `C:\Users\you`, `E:\Dev`, `/Volumes/MyDATA/Dev`, `~`, `~/Downloads`, `This PC`, `Home`, `Gallery`, `Recent` / `Recent files`, `Network`, `Trash` / `Recycle Bin`, and `smb://server/share` (mounts the share).
 - Ctrl/⌘+click or middle-click a folder opens it in a new background tab.
 - On relaunch, all tabs and windows are restored (stored in settings).
 - The folder watcher refreshes the listing live (debounce 100 ms) and keeps the selection.

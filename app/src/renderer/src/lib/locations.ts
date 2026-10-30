@@ -1,7 +1,7 @@
 import type { Places, Volume } from '@shared/types'
 import { baseName, isSpecial, joinPath, SPECIAL_LABELS, volumeOf } from '@shared/paths'
 
-const SPECIAL_ICONS = { home: 'i-home', gallery: 'i-gallery', thispc: 'i-this-mac', network: 'i-network', trash: 'i-trash' }
+const SPECIAL_ICONS = { home: 'i-home', gallery: 'i-gallery', recent: 'i-recent', thispc: 'i-this-mac', network: 'i-network', trash: 'i-trash' }
 
 const DRIVE_ICONS: Record<Volume['kind'], string> = {
   system: 'i-drive-system', external: 'i-drive-external', usb: 'i-drive-usb', network: 'i-drive-network', image: 'i-disk-image'

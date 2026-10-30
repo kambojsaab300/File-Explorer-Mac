@@ -394,16 +394,18 @@ useStore.subscribe((s, prev) => {
 // Everything the user can currently select: search hits while searching, else the folder.
 export const visibleEntries = (t: Tab): Entry[] => (t.search.trim() && t.results ? t.results : t.items)
 
+const nameCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
+
 export function sortedItems(t: Tab): Entry[] {
   const q = t.search.trim().toLowerCase()
   // Filter this folder instantly, then show the recursive results once they arrive.
   const items = !q ? t.items : (t.results ?? t.items.filter((e) => e.name.toLowerCase().includes(q)))
   const { key, dir } = t.sort
-  const byName = (a: Entry, b: Entry): number => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+  const byName = (a: Entry, b: Entry): number => nameCollator.compare(a.name, b.name)
   const cmp: Record<SortKey, (a: Entry, b: Entry) => number> = {
     name: byName,
     date: (a, b) => a.mtimeMs - b.mtimeMs,
-    type: (a, b) => typeOf(a).localeCompare(typeOf(b)),
+    type: (a, b) => nameCollator.compare(typeOf(a), typeOf(b)),
     size: (a, b) => a.size - b.size
   }
   return [...items].sort((a, b) => {

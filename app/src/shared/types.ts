@@ -78,7 +78,7 @@ export interface TrashResult {
   trashedTo?: Path
 }
 
-export type SpecialLocation = 'thispc' | 'home' | 'gallery' | 'network' | 'trash'
+export type SpecialLocation = 'thispc' | 'home' | 'gallery' | 'recent' | 'network' | 'trash'
 
 export interface Places {
   home: Path

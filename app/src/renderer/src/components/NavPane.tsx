@@ -7,6 +7,8 @@ import { locOf, useStore } from '@/store'
 import { useOps } from '@/actions'
 import { Icon } from './Icon'
 
+const navCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
+
 interface RowProps {
   loc: string
   label: string
@@ -25,6 +27,7 @@ export function NavPane() {
     <nav className="nav" tabIndex={-1}>
       <Row loc="home" label="Home" icon="i-home" />
       <Row loc="gallery" label="Gallery" icon="i-gallery" />
+      <Row loc="recent" label="Recent" icon="i-recent" />
       <div className="nav-sep" />
       {quick.map(([loc, k]) => (
         <Row key={loc} loc={loc} label={k.label} icon={k.icon} expandable pinned />
@@ -59,7 +62,7 @@ function Row(props: RowProps & { defaultOpen?: boolean; children?: React.ReactNo
       setSubdirs(
         entries
           .filter((x) => x.kind === 'dir')
-          .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+          .sort((a, b) => navCollator.compare(a.name, b.name))
           .map((x) => ({ path: x.path, name: x.name }))
       )
     }
