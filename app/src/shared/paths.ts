@@ -37,6 +37,11 @@ export function extOf(name: string): string {
   return i > 0 ? name.slice(i + 1).toLowerCase() : ''
 }
 
+export function withoutExt(name: string): string {
+  const i = name.lastIndexOf('.')
+  return i > 0 ? name.slice(0, i) : name
+}
+
 // Explorer naming: pasting into the same folder gives "a - Copy.txt", "a - Copy (2).txt";
 // "keep both" on a conflict gives "a (2).txt".
 export function variantName(name: string, style: 'copy' | 'number', n: number): string {

@@ -38,11 +38,13 @@ interface State {
   active: number
   volumes: Volume[]
   places: Places | null
+  pinned: string[]
   detailsPane: boolean
   addressEditing: boolean
   prefs: Prefs
   showOptions: boolean
   init(): Promise<void>
+  togglePin(path: string): void
   setPref<K extends keyof Prefs>(key: K, value: Prefs[K]): void
   go(loc: string, opts?: { push?: boolean }): void
   back(): void
@@ -110,22 +112,31 @@ export const useStore = create<State>((set, get) => {
     active: 0,
     volumes: [],
     places: null,
+    pinned: [],
     detailsPane: false,
     addressEditing: false,
     prefs: DEFAULT_PREFS,
     showOptions: false,
 
     async init() {
-      const [volumes, places, saved, prefs] = await Promise.all([
+      const [volumes, places, saved, prefs, pinned] = await Promise.all([
         api.volumes.list(),
         api.fs.places(),
         api.settings.get<string[]>('openTabs'),
-        api.settings.get<Partial<Prefs>>('prefs')
+        api.settings.get<Partial<Prefs>>('prefs'),
+        api.settings.get<string[]>('pinnedFolders')
       ])
-      set({ volumes, places, prefs: { ...DEFAULT_PREFS, ...prefs } })
+      set({ volumes, places, prefs: { ...DEFAULT_PREFS, ...prefs }, pinned: pinned ?? [] })
       api.volumes.onChange((volumes) => set({ volumes }))
       if (saved?.length) set({ tabs: saved.map(makeTab), active: 0 })
       get().tabs.forEach((t) => void load(t))
+    },
+
+    togglePin(path: string) {
+      const current = get().pinned
+      const next = current.includes(path) ? current.filter((p) => p !== path) : [...current, path]
+      set({ pinned: next })
+      void api.settings.set('pinnedFolders', next)
     },
 
     setPref(key, value) {

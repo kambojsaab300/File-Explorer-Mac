@@ -1,8 +1,8 @@
 import { app } from 'electron'
 import type { Dirent, Stats } from 'node:fs'
-import { lstat, mkdir as mkdirFs, opendir, rename as renameFs, stat as statFs } from 'node:fs/promises'
-import type { Entry, Path, SpecialLocation } from '@shared/types'
-import { baseName, extOf, joinPath, parentOf, parseDisplay } from '@shared/paths'
+import { chmod, lstat, mkdir as mkdirFs, opendir, rename as renameFs, stat as statFs } from 'node:fs/promises'
+import type { Entry, FileProperties, Path, SpecialLocation } from '@shared/types'
+import { baseName, extOf, joinPath, parentOf, parseDisplay, toDisplay } from '@shared/paths'
 import { listVolumes } from './volumes.service'
 
 // macOS shows these directories as single files.
@@ -54,6 +54,92 @@ export async function list(dir: Path, opts: { hidden?: boolean } = {}): Promise<
 
 export async function stat(p: Path): Promise<Entry> {
   return toEntry(p, await statFs(p))
+}
+
+export async function properties(p: Path): Promise<FileProperties> {
+  const st = await statFs(p)
+  const name = baseName(p) || p
+  const ext = extOf(name)
+  let kind: Entry['kind'] = st.isDirectory() ? 'dir' : 'file'
+  if (kind === 'dir' && PACKAGE_EXTS.has(ext)) kind = 'package'
+
+  const vols = await listVolumes()
+  const parent = parentOf(p) ?? p
+  const locationWindows = toDisplay(parent, vols)
+  const locationMac = parent
+
+  let itemCount: { files: number; folders: number } | undefined
+  let calculatedSize = st.size
+  if (kind === 'dir') {
+    let files = 0
+    let folders = 0
+    let totalBytes = 0
+    async function scan(dir: Path, depth: number): Promise<void> {
+      if (depth > 4 || files + folders > 3000) return
+      try {
+        const entries = await opendir(dir, { bufferSize: 128 })
+        for await (const de of entries) {
+          if (de.isDirectory()) {
+            folders++
+            await scan(joinPath(dir, de.name), depth + 1)
+          } else {
+            files++
+            try {
+              const s = await statFs(joinPath(dir, de.name))
+              totalBytes += s.size
+            } catch {
+              // ignore unreadable
+            }
+          }
+        }
+      } catch {
+        // ignore unreadable
+      }
+    }
+    await scan(p, 0)
+    itemCount = { files, folders }
+    calculatedSize = totalBytes
+  }
+
+  const sizeOnDisk = Math.ceil(Math.max(calculatedSize, 4096) / 4096) * 4096
+  const posixMode = '0' + (st.mode & 0o777).toString(8)
+
+  return {
+    path: p,
+    name,
+    kind,
+    ext,
+    size: calculatedSize,
+    sizeOnDisk,
+    locationWindows,
+    locationMac,
+    mtimeMs: st.mtimeMs,
+    ctimeMs: st.ctimeMs,
+    atimeMs: st.atimeMs,
+    readonly: (st.mode & 0o200) === 0,
+    hidden: name.startsWith('.'),
+    posixMode,
+    itemCount
+  }
+}
+
+export async function setAttributes(p: Path, attrs: { hidden?: boolean; readonly?: boolean }): Promise<void> {
+  if (typeof attrs.readonly === 'boolean') {
+    const st = await statFs(p)
+    const newMode = attrs.readonly ? st.mode & ~0o222 : st.mode | 0o200
+    await chmod(p, newMode)
+  }
+  if (typeof attrs.hidden === 'boolean') {
+    const name = baseName(p)
+    const isCurrentlyHidden = name.startsWith('.')
+    if (attrs.hidden && !isCurrentlyHidden) {
+      const parent = parentOf(p) ?? '/'
+      await renameFs(p, joinPath(parent, '.' + name))
+    } else if (!attrs.hidden && isCurrentlyHidden) {
+      const parent = parentOf(p) ?? '/'
+      await renameFs(p, joinPath(parent, name.slice(1)))
+    }
+  }
 }
 
 export async function mkdir(parent: Path, name: string): Promise<Path> {

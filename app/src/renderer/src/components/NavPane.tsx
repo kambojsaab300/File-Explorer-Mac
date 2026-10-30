@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { isSpecial } from '@shared/paths'
+import { baseName, isSpecial } from '@shared/paths'
 import { api } from '@/api/client'
 import { dropTarget } from '@/dnd'
 import { driveIcon, driveLabel, knownFolders } from '@/lib/locations'
@@ -16,8 +16,9 @@ interface RowProps {
 }
 
 export function NavPane() {
-  const { places, volumes } = useStore()
+  const { places, volumes, pinned } = useStore()
   const quick = Object.entries(knownFolders(places))
+  const customPinned = (pinned ?? []).filter((p) => !quick.some(([loc]) => loc === p))
 
   return (
     <nav className="nav" tabIndex={-1}>
@@ -26,6 +27,9 @@ export function NavPane() {
       <div className="nav-sep" />
       {quick.map(([loc, k]) => (
         <Row key={loc} loc={loc} label={k.label} icon={k.icon} expandable pinned />
+      ))}
+      {customPinned.map((p) => (
+        <Row key={p} loc={p} label={baseName(p)} icon="i-folder-pinned" expandable pinned />
       ))}
       <div className="nav-sep" />
       <Row loc="thispc" label="This PC" icon="i-this-mac" expandable defaultOpen>
@@ -75,7 +79,14 @@ function Row(props: RowProps & { defaultOpen?: boolean; children?: React.ReactNo
         <Icon name={icon} />
         <span className="name">{label}</span>
         {pinned && (
-          <span className="pin">
+          <span
+            className="pin"
+            title="Quick access pin"
+            onClick={(e) => {
+              e.stopPropagation()
+              useStore.getState().togglePin(loc)
+            }}
+          >
             <Icon name="u-pin" size={14} />
           </span>
         )}

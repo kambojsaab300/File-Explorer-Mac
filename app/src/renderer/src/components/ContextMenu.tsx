@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
-  copy, copyAsPath, currentDir, deleteSelected, newFolder, newTextFile, openInTerminal, paste,
-  revealSelected, selectedEntries, startRename, undo, useOps
+  compressSelected, copy, copyAsPath, currentDir, deleteSelected, newFolder, newTextFile,
+  openExtractDialog, openInTerminal, paste, revealSelected, selectedEntries, showProperties,
+  startRename, undo, useOps
 } from '@/actions'
 import { useStore } from '@/store'
 import { Icon } from './Icon'
@@ -22,6 +23,8 @@ function itemMenu(): { row: Item[]; list: (Item | '-')[] } {
   const sel = selectedEntries()
   const one = sel.length === 1 ? sel[0] : null
   const { clipboard } = useOps.getState()
+  const isZip = !!one?.name.toLowerCase().endsWith('.zip')
+
   return {
     // Windows 11 puts the common verbs in an icon row at the top of the menu.
     row: [
@@ -33,13 +36,24 @@ function itemMenu(): { row: Item[]; list: (Item | '-')[] } {
     list: [
       { label: 'Open', icon: 'u-open-with', accel: 'Enter', disabled: !one, run: () => one && openEntry(one) },
       ...(one?.kind === 'dir' ? [{ label: 'Open in new tab', icon: 'u-tab-new', run: () => openEntry(one, true) }] : []),
+      ...(one?.kind === 'dir'
+        ? [
+            {
+              label: useStore.getState().pinned.includes(one.path) ? 'Unpin from Quick access' : 'Pin to Quick access',
+              icon: useStore.getState().pinned.includes(one.path) ? 'u-unpin' : 'u-pin',
+              run: () => useStore.getState().togglePin(one.path)
+            }
+          ]
+        : []),
+      ...(isZip ? [{ label: 'Extract All...', icon: 'u-extract', run: () => openExtractDialog(one?.path) }] : []),
+      { label: 'Compress to ZIP file', icon: 'u-zip', run: () => void compressSelected() },
       '-',
       ...(one?.kind === 'dir' && clipboard ? [{ label: 'Paste into folder', icon: 'u-paste', run: () => void paste(one.path) }] : []),
       { label: 'Copy as path', icon: 'u-link', accel: 'Ctrl+Shift+C', run: copyAsPath },
       { label: 'Show in Finder', icon: 'u-folder', run: revealSelected },
       { label: 'Open in Terminal', icon: 'u-terminal', run: openInTerminal },
       '-',
-      { label: 'Properties', icon: 'u-properties', accel: 'Alt+Enter', run: () => useStore.setState({ detailsPane: true }) }
+      { label: 'Properties', icon: 'u-properties', accel: 'Alt+Enter', run: () => void showProperties(one?.path) }
     ]
   }
 }
@@ -57,7 +71,9 @@ function backgroundMenu(): (Item | '-')[] {
     { label: 'New text document', icon: 'u-new-file', disabled: !canWrite, run: () => void newTextFile() },
     '-',
     { label: 'Copy as path', icon: 'u-link', disabled: !canWrite, run: copyAsPath },
-    { label: 'Open in Terminal', icon: 'u-terminal', disabled: !canWrite, run: openInTerminal }
+    { label: 'Open in Terminal', icon: 'u-terminal', disabled: !canWrite, run: openInTerminal },
+    '-',
+    { label: 'Properties', icon: 'u-properties', accel: 'Alt+Enter', disabled: !currentDir(), run: () => void showProperties(currentDir() ?? undefined) }
   ]
 }
 

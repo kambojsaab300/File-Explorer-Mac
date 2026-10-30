@@ -14,6 +14,8 @@ const api: KhojAPI = {
   fs: {
     list: (dir, o) => ipcRenderer.invoke('fs:list', dir, o),
     stat: (p) => ipcRenderer.invoke('fs:stat', p),
+    properties: (p) => ipcRenderer.invoke('fs:properties', p),
+    setAttributes: (p, attrs) => ipcRenderer.invoke('fs:set-attributes', p, attrs),
     mkdir: (parent, name) => ipcRenderer.invoke('fs:mkdir', parent, name),
     rename: (p, name) => ipcRenderer.invoke('fs:rename', p, name),
     resolveInput: (text) => ipcRenderer.invoke('fs:resolve-input', text),
@@ -47,6 +49,8 @@ const api: KhojAPI = {
     trash: (paths) => ipcRenderer.invoke('ops:trash', paths),
     deletePermanently: (paths) => ipcRenderer.invoke('ops:delete', paths),
     newFile: (parent, name) => ipcRenderer.invoke('ops:new-file', parent, name),
+    compress: (sources, destZip) => ipcRenderer.invoke('ops:compress', sources, destZip),
+    extract: (zipPath, destDir) => ipcRenderer.invoke('ops:extract', zipPath, destDir),
     pause: (id) => ipcRenderer.send('ops:pause', id),
     resume: (id) => ipcRenderer.send('ops:resume', id),
     cancel: (id) => ipcRenderer.send('ops:cancel', id),

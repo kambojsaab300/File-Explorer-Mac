@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { copy, currentDir, deleteSelected, paste, startRename, useOps } from '@/actions'
+import { compressSelected, copy, currentDir, deleteSelected, paste, showProperties, startRename, useOps } from '@/actions'
 import { useStore, type View } from '@/store'
 import { Icon } from './Icon'
 
@@ -16,7 +16,7 @@ export function CommandBar() {
   const { tabs, active, detailsPane, setView, setSort, toggleDetails } = useStore()
   const clipboard = useOps((s) => s.clipboard)
   const tab = tabs[active]
-  const [menu, setMenu] = useState<'view' | 'sort' | null>(null)
+  const [menu, setMenu] = useState<'view' | 'sort' | 'more' | null>(null)
 
   const canWrite = !!currentDir()
   const hasSel = canWrite && tab.sel.length > 0
@@ -83,6 +83,28 @@ export function CommandBar() {
                 {label}
               </button>
             ))}
+          </div>
+        )}
+      </div>
+
+      <div className="cmd-wrap">
+        <button className={`cmd${menu === 'more' ? ' open' : ''}`} title="See more" onClick={() => setMenu(menu === 'more' ? null : 'more')}>
+          <Icon name="u-more" />
+        </button>
+        {menu === 'more' && (
+          <div className="flyout" style={{ minWidth: 180, right: 0, left: 'auto' }}>
+            <button className="mi" disabled={!hasSel} onClick={() => (void compressSelected(), setMenu(null))}>
+              <Icon name="u-zip" />
+              Compress to ZIP
+            </button>
+            <button className="mi" disabled={!canWrite} onClick={() => (void showProperties(), setMenu(null))}>
+              <Icon name="u-properties" />
+              Properties
+            </button>
+            <div style={{ height: 1, background: 'var(--c-divider-strong)', margin: '4px 0' }} />
+            <button className="mi" onClick={() => (useStore.setState({ showOptions: true }), setMenu(null))}>
+              Options
+            </button>
           </div>
         )}
       </div>

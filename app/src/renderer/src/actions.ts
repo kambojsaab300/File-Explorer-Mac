@@ -1,8 +1,8 @@
 // File operations as the user sees them: clipboard, Undo, rename, delete and the
 // dialogs they open. The explorer store (store.ts) stays focused on navigation.
 import { create } from 'zustand'
-import type { ConflictAnswer, ConflictRequest, Entry, OpProgress, OpResult, Path } from '@shared/types'
-import { baseName, isSpecial, parentOf, variantName, volumeOf } from '@shared/paths'
+import type { ConflictAnswer, ConflictRequest, Entry, FileProperties, OpProgress, OpResult, Path } from '@shared/types'
+import { baseName, isSpecial, parentOf, variantName, volumeOf, withoutExt } from '@shared/paths'
 import { api } from './api/client'
 import { locOf, useStore, visibleEntries } from './store'
 
@@ -28,6 +28,8 @@ interface OpsState {
   confirm: { title: string; message: string; yes: string; onYes: () => void } | null
   error: string | null
   menu: MenuState | null
+  properties: FileProperties | null
+  extracting: { zipPath: Path; destDir: string } | null
 }
 
 export const useOps = create<OpsState>(() => ({
@@ -38,7 +40,9 @@ export const useOps = create<OpsState>(() => ({
   conflict: null,
   confirm: null,
   error: null,
-  menu: null
+  menu: null,
+  properties: null,
+  extracting: null
 }))
 
 const set = useOps.setState
@@ -252,4 +256,56 @@ export function openInTerminal(): void {
 export function revealSelected(): void {
   const first = selectedPaths()[0] ?? currentDir()
   if (first && !isSpecial(first)) api.shell.reveal(first)
+}
+
+export async function showProperties(targetPath?: Path): Promise<void> {
+  const p = targetPath ?? selectedPaths()[0] ?? currentDir()
+  if (!p || isSpecial(p)) return
+  try {
+    const props = await api.fs.properties(p)
+    set({ properties: props })
+  } catch (e) {
+    fail(e)
+  }
+}
+
+export function closeProperties(): void {
+  set({ properties: null })
+}
+
+export async function compressSelected(): Promise<void> {
+  const paths = selectedPaths().filter((p) => !isSpecial(p))
+  if (!paths.length) return
+  try {
+    const archive = await api.ops.compress(paths)
+    refresh()
+    tab().sel = [archive]
+  } catch (e) {
+    fail(e)
+  }
+}
+
+export function openExtractDialog(zipPath?: Path): void {
+  const p = zipPath ?? selectedPaths()[0]
+  if (!p || !p.toLowerCase().endsWith('.zip')) return
+  const parent = parentOf(p) ?? '/'
+  const destDir = `${parent}/${withoutExt(baseName(p))}`
+  set({ extracting: { zipPath: p, destDir } })
+}
+
+export function closeExtractDialog(): void {
+  set({ extracting: null })
+}
+
+export async function runExtract(zipPath: Path, destDir: Path, openFolder: boolean): Promise<void> {
+  try {
+    const target = await api.ops.extract(zipPath, destDir)
+    set({ extracting: null })
+    refresh()
+    if (openFolder) {
+      useStore.getState().go(target)
+    }
+  } catch (e) {
+    fail(e)
+  }
 }

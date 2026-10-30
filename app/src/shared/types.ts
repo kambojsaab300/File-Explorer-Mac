@@ -83,6 +83,25 @@ export interface Places {
 
 type Unsubscribe = () => void
 
+export interface FileProperties {
+  path: Path
+  name: string
+  kind: Entry['kind']
+  ext: string
+  size: number
+  sizeOnDisk?: number
+  locationWindows: string
+  locationMac: string
+  mtimeMs: number
+  ctimeMs: number
+  atimeMs: number
+  readonly: boolean
+  hidden: boolean
+  posixMode?: string
+  owner?: string
+  itemCount?: { files: number; folders: number }
+}
+
 // Commands the native macOS menu bar sends to the focused window.
 export type MenuCommand =
   | 'new-tab' | 'close-tab' | 'new-folder' | 'new-file' | 'rename' | 'trash' | 'undo'
@@ -95,6 +114,8 @@ export interface KhojAPI {
   fs: {
     list(dir: Path, o?: { hidden?: boolean }): Promise<Entry[]>
     stat(p: Path): Promise<Entry>
+    properties(p: Path): Promise<FileProperties>
+    setAttributes(p: Path, attrs: { hidden?: boolean; readonly?: boolean }): Promise<void>
     mkdir(parent: Path, name: string): Promise<Path>
     rename(p: Path, newName: string): Promise<Path>
     resolveInput(text: string): Promise<Path | SpecialLocation | null>
@@ -121,6 +142,8 @@ export interface KhojAPI {
     trash(paths: Path[]): Promise<TrashResult[]>
     deletePermanently(paths: Path[]): Promise<void>
     newFile(parent: Path, name: string): Promise<Path>
+    compress(sources: Path[], destZip?: Path): Promise<Path>
+    extract(zipPath: Path, destDir?: Path): Promise<Path>
     pause(opId: string): void
     resume(opId: string): void
     cancel(opId: string): void

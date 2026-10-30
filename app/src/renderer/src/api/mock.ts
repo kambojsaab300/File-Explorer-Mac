@@ -43,6 +43,26 @@ export const mockApi: KhojAPI = {
   fs: {
     list: async (dir) => sim(Object.entries(TREE[dir] ?? {}).map(([n, v]) => entry(joinPath(dir, n), v))),
     stat: async (p) => sim(entry(p, '/')),
+    properties: async (p) => {
+      const e = entry(p, TREE[p] ? '/' : 1024)
+      return {
+        path: p,
+        name: e.name,
+        kind: e.kind,
+        ext: e.ext,
+        size: e.size,
+        sizeOnDisk: 4096,
+        locationWindows: 'C:\\Users\\you',
+        locationMac: p,
+        mtimeMs: e.mtimeMs,
+        ctimeMs: e.birthtimeMs,
+        atimeMs: e.mtimeMs,
+        readonly: false,
+        hidden: e.hidden,
+        posixMode: '0755'
+      }
+    },
+    setAttributes: async () => {},
     mkdir: async (parent, name) => joinPath(parent, name),
     rename: async (p, name) => joinPath(p.slice(0, p.lastIndexOf('/')) || '/', name),
     resolveInput: async (text) => {
@@ -71,6 +91,8 @@ export const mockApi: KhojAPI = {
     trash: async (paths) => paths.map((from) => ({ from })),
     deletePermanently: async () => {},
     newFile: async (parent, name) => joinPath(parent, name),
+    compress: async (paths, dest) => dest ?? `${paths[0]}.zip`,
+    extract: async (p, dest) => dest ?? p.replace(/\.zip$/, ''),
     pause: () => {}, resume: () => {}, cancel: () => {},
     onProgress: () => () => {},
     onConflict: () => () => {}

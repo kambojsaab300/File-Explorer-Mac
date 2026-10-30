@@ -1,11 +1,15 @@
 import { app, shell } from 'electron'
+import { execFile } from 'node:child_process'
 import { constants } from 'node:fs'
 import { copyFile, lstat, mkdir, readdir, readlink, rename, rm, stat, symlink, writeFile } from 'node:fs/promises'
+import { promisify } from 'node:util'
 import { randomUUID } from 'node:crypto'
 import { normalize } from 'node:path'
 import type { Conflict, ConflictAnswer, ConflictRequest, OpProgress, OpResult, Path, TrashResult } from '@shared/types'
-import { baseName, joinPath, parentOf, variantName } from '@shared/paths'
+import { baseName, joinPath, parentOf, variantName, withoutExt } from '@shared/paths'
 import { stat as entryOf } from './fs.service'
+
+const execFileAsync = promisify(execFile)
 
 type AskConflict = (req: ConflictRequest) => Promise<ConflictAnswer>
 
@@ -250,4 +254,48 @@ export async function newFile(parent: Path, name: string): Promise<Path> {
   const path = joinPath(parent, name)
   await writeFile(path, '', { flag: 'wx' })
   return path
+}
+
+export async function compress(sources: Path[], destZip?: Path): Promise<Path> {
+  if (sources.length === 0) throw new Error('No files specified to compress')
+  const first = sources[0]
+  const parent = parentOf(first) ?? '/'
+  let target = destZip
+  if (!target) {
+    const defaultBase = sources.length === 1 ? withoutExt(baseName(first)) : 'Archive'
+    target = await freeName(parent, `${defaultBase}.zip`, 'number')
+  }
+
+  if (process.platform === 'darwin') {
+    if (sources.length === 1) {
+      await execFileAsync('ditto', ['-c', '-k', '--sequesterRsrc', '--keepParent', first, target])
+    } else {
+      const basenames = sources.map((s) => baseName(s))
+      await execFileAsync('zip', ['-r', '-q', target, ...basenames], { cwd: parent })
+    }
+  } else {
+    // Windows / Linux: bsdtar supports zip creation
+    const basenames = sources.map((s) => baseName(s))
+    await execFileAsync('tar', ['-a', '-c', '-f', target, ...basenames], { cwd: parent })
+  }
+
+  return target
+}
+
+export async function extract(zipPath: Path, destDir?: Path): Promise<Path> {
+  const parent = parentOf(zipPath) ?? '/'
+  let target = destDir
+  if (!target) {
+    const folderName = withoutExt(baseName(zipPath))
+    target = await freeName(parent, folderName, 'number')
+  }
+  await mkdir(target, { recursive: true })
+
+  if (process.platform === 'darwin') {
+    await execFileAsync('ditto', ['-x', '-k', zipPath, target])
+  } else {
+    await execFileAsync('tar', ['-xf', zipPath, '-C', target])
+  }
+
+  return target
 }

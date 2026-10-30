@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { locOf, sortedItems, useStore } from './store'
 import { openEntry } from './components/MainArea'
-import { copy, copyAsPath, deleteSelected, newFolder, paste, startRename, undo, useOps } from './actions'
+import { copy, copyAsPath, deleteSelected, newFolder, paste, showProperties, startRename, undo, useOps } from './actions'
 
 // Windows shortcuts. Ctrl and ⌘ both work so Mac and Windows muscle memory are covered.
 export function useShortcuts(): void {
@@ -17,6 +17,7 @@ export function useShortcuts(): void {
       else if (e.altKey && e.key === 'ArrowRight') s.forward()
       else if (e.altKey && e.key === 'ArrowUp') s.up()
       else if (e.altKey && e.shiftKey && key === 'p') s.toggleDetails()
+      else if ((e.altKey && e.key === 'Enter') || (mod && key === 'i')) void showProperties()
       else if (e.key === 'F5') s.refresh()
       else if (mod && key === 't') s.newTab()
       else if (mod && key === 'w') s.closeTab(s.active)

@@ -54,6 +54,8 @@ export function registerIpc(): void {
 
   ipcMain.handle('fs:list', (_, dir, opts) => fsService.list(path(dir), { hidden: !!opts?.hidden }))
   ipcMain.handle('fs:stat', (_, p) => fsService.stat(path(p)))
+  ipcMain.handle('fs:properties', (_, p) => fsService.properties(path(p)))
+  ipcMain.handle('fs:set-attributes', (_, p, attrs) => fsService.setAttributes(path(p), attrs ?? {}))
   ipcMain.handle('fs:mkdir', (_, parent, name) => fsService.mkdir(path(parent), fileName(name)))
   ipcMain.handle('fs:rename', (_, p, name) => fsService.rename(path(p), fileName(name)))
   ipcMain.handle('fs:resolve-input', (_, text) => fsService.resolveInput(String(text ?? '')))
@@ -98,6 +100,8 @@ export function registerIpc(): void {
   ipcMain.handle('ops:trash', (_, list) => ops.trash(paths(list)))
   ipcMain.handle('ops:delete', (_, list) => ops.deletePermanently(paths(list)))
   ipcMain.handle('ops:new-file', (_, parent, name) => ops.newFile(path(parent), fileName(name)))
+  ipcMain.handle('ops:compress', (_, list, target) => ops.compress(paths(list), target ? path(target) : undefined))
+  ipcMain.handle('ops:extract', (_, p, target) => ops.extract(path(p), target ? path(target) : undefined))
   ipcMain.on('ops:pause', (_, id) => ops.pause(String(id)))
   ipcMain.on('ops:resume', (_, id) => ops.resume(String(id)))
   ipcMain.on('ops:cancel', (_, id) => ops.cancel(String(id)))
