@@ -1,4 +1,6 @@
-import { app, BrowserWindow, ipcMain, type WebContents } from 'electron'
+import { app, BrowserWindow, ipcMain, shell, type WebContents } from 'electron'
+import * as clipboard from './services/clipboard.service'
+import * as watch from './services/watch.service'
 import { randomUUID } from 'node:crypto'
 import { isAbsolute } from 'node:path'
 import type { ConflictAnswer, ConflictRequest } from '@shared/types'
@@ -99,6 +101,37 @@ export function registerIpc(): void {
   ipcMain.on('ops:pause', (_, id) => ops.pause(String(id)))
   ipcMain.on('ops:resume', (_, id) => ops.resume(String(id)))
   ipcMain.on('ops:cancel', (_, id) => ops.cancel(String(id)))
+
+  ipcMain.handle('fs:search', (_, root, query, opts) => watch.search(path(root), String(query ?? ''), !!opts?.hidden))
+
+  // Watch subscriptions are keyed by an id the renderer picks, and dropped with the window.
+  const unwatchers = new Map<string, () => void>()
+  ipcMain.on('fs:watch', (e, id, dir) => {
+    const key = `${e.sender.id}:${id}`
+    const sender = e.sender
+    unwatchers.set(key, watch.subscribe(path(dir), () => !sender.isDestroyed() && sender.send('fs:changed', id)))
+    sender.once('destroyed', () => {
+      unwatchers.get(key)?.()
+      unwatchers.delete(key)
+    })
+  })
+  ipcMain.on('fs:unwatch', (e, id) => {
+    const key = `${e.sender.id}:${id}`
+    unwatchers.get(key)?.()
+    unwatchers.delete(key)
+  })
+
+  ipcMain.on('clipboard:write-files', (_, list) => clipboard.writeFiles(paths(list)))
+  ipcMain.handle('clipboard:read-files', () => clipboard.readFiles())
+
+  ipcMain.on('app:mac-buttons', (e, on) => {
+    if (process.platform === 'darwin') fromSender(e)?.setWindowButtonVisibility(!!on)
+  })
+  ipcMain.on('app:privacy-settings', (_, pane) => {
+    if (process.platform !== 'darwin') return
+    const anchor = pane === 'fulldisk' ? 'Privacy_AllFiles' : 'Privacy_FilesAndFolders'
+    void shell.openExternal(`x-apple.systempreferences:com.apple.preference.security?${anchor}`)
+  })
 
   ipcMain.handle('settings:get', (_, key) => getSetting(String(key)))
   ipcMain.handle('settings:set', (_, key, value) => setSetting(String(key), value))

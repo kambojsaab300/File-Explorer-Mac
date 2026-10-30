@@ -83,6 +83,13 @@ export interface Places {
 
 type Unsubscribe = () => void
 
+// Commands the native macOS menu bar sends to the focused window.
+export type MenuCommand =
+  | 'new-tab' | 'close-tab' | 'new-folder' | 'new-file' | 'rename' | 'trash' | 'undo'
+  | 'cut' | 'copy' | 'paste' | 'select-all' | 'copy-path' | 'refresh' | 'back' | 'forward' | 'up'
+  | 'go-home' | 'go-thispc' | 'go-downloads' | 'focus-address' | 'details-pane' | 'options'
+  | 'view-details' | 'view-large' | 'view-list' | 'view-tiles' | 'view-content'
+
 export interface KhojAPI {
   platform: NodeJS.Platform
   fs: {
@@ -92,6 +99,20 @@ export interface KhojAPI {
     rename(p: Path, newName: string): Promise<Path>
     resolveInput(text: string): Promise<Path | SpecialLocation | null>
     places(): Promise<Places>
+    // Recursive name search under `root`. Starting a new search cancels the previous one.
+    search(root: Path, query: string, o?: { hidden?: boolean }): Promise<Entry[]>
+    // Calls back (debounced) whenever something inside `dir` changes.
+    watch(dir: Path, cb: () => void): Unsubscribe
+  }
+  clipboard: {
+    // Puts files on the system pasteboard so Finder can paste them too.
+    writeFiles(paths: Path[]): void
+    readFiles(): Promise<Path[]>
+  }
+  app: {
+    onMenu(cb: (command: MenuCommand) => void): Unsubscribe
+    setMacButtons(on: boolean): void
+    openPrivacySettings(pane: 'files' | 'fulldisk'): void
   }
   ops: {
     // Resolves when the whole job finishes; progress streams through onProgress meanwhile.

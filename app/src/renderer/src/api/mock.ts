@@ -52,8 +52,18 @@ export const mockApi: KhojAPI = {
     places: async () => ({
       home: HOME, desktop: `${HOME}/Desktop`, downloads: `${HOME}/Downloads`, documents: `${HOME}/Documents`,
       pictures: `${HOME}/Pictures`, music: `${HOME}/Music`, videos: `${HOME}/Movies`
-    })
+    }),
+    search: async (root, query) => {
+      const q = query.toLowerCase()
+      return Object.entries(TREE)
+        .filter(([dir]) => dir === root || dir.startsWith(root + '/'))
+        .flatMap(([dir, kids]) => Object.entries(kids).map(([n, v]) => entry(joinPath(dir, n), v)))
+        .filter((e) => e.name.toLowerCase().includes(q))
+    },
+    watch: () => () => {}
   },
+  clipboard: { writeFiles: () => {}, readFiles: async () => [] },
+  app: { onMenu: () => () => {}, setMacButtons: () => {}, openPrivacySettings: note('privacy settings') },
   // The mock disk is read-only; file operations report success without changing anything.
   ops: {
     copy: async () => ({ state: 'done', moved: [] }),

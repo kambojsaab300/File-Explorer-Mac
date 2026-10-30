@@ -7,6 +7,8 @@ function subscribe<T>(channel: string, cb: (value: T) => void): () => void {
   return () => ipcRenderer.removeListener(channel, listener)
 }
 
+let watchSeq = 0
+
 const api: KhojAPI = {
   platform: process.platform,
   fs: {
@@ -15,7 +17,29 @@ const api: KhojAPI = {
     mkdir: (parent, name) => ipcRenderer.invoke('fs:mkdir', parent, name),
     rename: (p, name) => ipcRenderer.invoke('fs:rename', p, name),
     resolveInput: (text) => ipcRenderer.invoke('fs:resolve-input', text),
-    places: () => ipcRenderer.invoke('fs:places')
+    places: () => ipcRenderer.invoke('fs:places'),
+    search: (root, query, o) => ipcRenderer.invoke('fs:search', root, query, o),
+    watch: (dir, cb) => {
+      const id = String(++watchSeq)
+      const listener = (_: unknown, changed: string): void => {
+        if (changed === id) cb()
+      }
+      ipcRenderer.on('fs:changed', listener)
+      ipcRenderer.send('fs:watch', id, dir)
+      return () => {
+        ipcRenderer.removeListener('fs:changed', listener)
+        ipcRenderer.send('fs:unwatch', id)
+      }
+    }
+  },
+  clipboard: {
+    writeFiles: (paths) => ipcRenderer.send('clipboard:write-files', paths),
+    readFiles: () => ipcRenderer.invoke('clipboard:read-files')
+  },
+  app: {
+    onMenu: (cb) => subscribe('menu:command', cb),
+    setMacButtons: (on) => ipcRenderer.send('app:mac-buttons', on),
+    openPrivacySettings: (pane) => ipcRenderer.send('app:privacy-settings', pane)
   },
   ops: {
     copy: (src, dest, conflict) => ipcRenderer.invoke('ops:copy', src, dest, conflict),
