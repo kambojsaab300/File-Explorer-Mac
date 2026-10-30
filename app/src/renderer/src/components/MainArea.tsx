@@ -6,7 +6,15 @@ import { api } from '@/api/client'
 import { fmtDate, iconOf, kbSize, shortSize, typeOf } from '@/lib/format'
 import { driveIcon, driveLabel, knownFolders } from '@/lib/locations'
 import { locOf, sortedItems, useStore, useTab, type SortKey } from '@/store'
+import { useOps } from '@/actions'
+import { dragSource, dropTarget } from '@/dnd'
 import { Icon } from './Icon'
+import { Name } from './Name'
+
+const openMenu = (e: React.MouseEvent, kind: 'item' | 'background'): void => {
+  e.preventDefault()
+  useOps.setState({ menu: { x: e.clientX, y: e.clientY, kind } })
+}
 
 export function openEntry(e: Entry, inNewTab = false): void {
   const { go, newTab } = useStore.getState()
@@ -126,22 +134,48 @@ function FolderView() {
   const order = useMemo(() => items.map((e) => e.path), [items])
   const onClick = useClickSelect(order)
   const clearSel = useStore((s) => s.select)
+  const clipboard = useOps((s) => s.clipboard)
+  const cut = new Set(clipboard?.cut ? clipboard.paths : [])
 
   if (tab.status === 'loading' && !tab.items.length) return <div className="empty">Working on it…</div>
-  if (!items.length) return <div className="empty">{tab.search ? 'No items match your search.' : 'This folder is empty.'}</div>
 
   const itemProps = (e: Entry) => ({
-    className: `it${tab.sel.includes(e.path) ? ' sel' : ''}`,
+    className: `it${tab.sel.includes(e.path) ? ' sel' : ''}${cut.has(e.path) ? ' cut' : ''}`,
     onClick: (ev: React.MouseEvent) => onClick(e.path, ev),
     onDoubleClick: () => openEntry(e),
-    onAuxClick: (ev: React.MouseEvent) => ev.button === 1 && openEntry(e, true)
+    onAuxClick: (ev: React.MouseEvent) => ev.button === 1 && openEntry(e, true),
+    onContextMenu: (ev: React.MouseEvent) => {
+      ev.stopPropagation()
+      if (!tab.sel.includes(e.path)) clearSel([e.path], e.path)
+      openMenu(ev, 'item')
+    },
+    ...dragSource(e.path),
+    ...(e.kind === 'dir' ? dropTarget(e.path) : {})
   })
 
-  if (tab.view === 'details') return <DetailsList items={items} itemProps={itemProps} />
+  // Right-click or drop on empty space targets the folder itself.
+  const backgroundProps = {
+    onClick: (e: React.MouseEvent) => e.target === e.currentTarget && clearSel([], null),
+    onContextMenu: (e: React.MouseEvent) => {
+      clearSel([], null)
+      openMenu(e, 'background')
+    },
+    ...dropTarget(locOf(tab))
+  }
+
+  if (!items.length) {
+    return (
+      <div className="scroll" {...backgroundProps}>
+        <div className="empty">{tab.search ? 'No items match your search.' : 'This folder is empty.'}</div>
+      </div>
+    )
+  }
+
+  if (tab.view === 'details') return <DetailsList items={items} itemProps={itemProps} backgroundProps={backgroundProps} />
 
   const size = tab.view === 'large' ? 96 : tab.view === 'medium' || tab.view === 'tiles' ? 48 : tab.view === 'content' ? 32 : 16
   return (
-    <div className="scroll" onClick={(e) => e.target === e.currentTarget && clearSel([], null)}>
+    <div className="scroll" {...backgroundProps}>
       <div className="items">
         {items.map((e) => (
           <div key={e.path} {...itemProps(e)}>
@@ -150,7 +184,7 @@ function FolderView() {
                 <div className="a">
                   <Icon name={iconOf(e)} size={size} />
                   <div className="tx">
-                    <span className="nm">{e.name}</span>
+                    <Name entry={e} />
                     {e.kind !== 'dir' && (
                       <div className="sub">
                         Type: <b>{typeOf(e)}</b>
@@ -173,7 +207,7 @@ function FolderView() {
               <>
                 <Icon name={iconOf(e)} size={size} />
                 <div className="tx">
-                  <span className="nm">{e.name}</span>
+                  <Name entry={e} />
                   <span className="sub">{typeOf(e)}</span>
                   {e.kind === 'file' && <span className="sub">{shortSize(e.size)}</span>}
                 </div>
@@ -181,7 +215,7 @@ function FolderView() {
             ) : (
               <>
                 <Icon name={iconOf(e)} size={size} />
-                <span className="nm">{e.name}</span>
+                <Name entry={e} />
               </>
             )}
           </div>
@@ -198,7 +232,8 @@ const COLUMNS: [SortKey, string][] = [
   ['size', 'Size']
 ]
 
-function DetailsList({ items, itemProps }: { items: Entry[]; itemProps: (e: Entry) => object }) {
+function DetailsList(props: { items: Entry[]; itemProps: (e: Entry) => object; backgroundProps: object }) {
+  const { items, itemProps, backgroundProps } = props
   const tab = useTab()
   const setSort = useStore((s) => s.setSort)
   const clearSel = useStore((s) => s.select)
@@ -207,7 +242,7 @@ function DetailsList({ items, itemProps }: { items: Entry[]; itemProps: (e: Entr
   const rows = useVirtualizer({ count: items.length, getScrollElement: () => scrollRef.current, estimateSize: () => 32, overscan: 12 })
 
   return (
-    <div className="scroll" ref={scrollRef} onClick={(e) => e.target === e.currentTarget && clearSel([], null)}>
+    <div className="scroll" ref={scrollRef} {...backgroundProps}>
       <div className="hdr">
         {COLUMNS.map(([key, label]) => (
           <div key={key} onClick={() => setSort(key)}>
@@ -227,7 +262,7 @@ function DetailsList({ items, itemProps }: { items: Entry[]; itemProps: (e: Entr
             <div key={e.path} {...itemProps(e)} style={{ position: 'absolute', top: r.start, left: 6, right: 6 }}>
               <div>
                 <Icon name={iconOf(e)} />
-                <span className="nm">{e.name}</span>
+                <Name entry={e} />
               </div>
               <div>{fmtDate(e.mtimeMs)}</div>
               <div>{typeOf(e)}</div>

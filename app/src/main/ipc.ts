@@ -1,6 +1,9 @@
-import { BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, type WebContents } from 'electron'
+import { randomUUID } from 'node:crypto'
 import { isAbsolute } from 'node:path'
+import type { ConflictAnswer, ConflictRequest } from '@shared/types'
 import * as fsService from './services/fs.service'
+import * as ops from './services/ops.service'
 import * as shellService from './services/shell.service'
 import { getSetting, setSetting } from './services/settings.service'
 import { ejectVolume, listVolumes, watchVolumes } from './services/volumes.service'
@@ -22,6 +25,18 @@ const paths = (list: unknown): string[] => {
   if (!Array.isArray(list)) throw new Error('Invalid path list')
   return list.map(path)
 }
+
+// Conflict prompts are a round trip: main asks the window that started the job and
+// waits for the user's choice in the Replace or Skip dialog.
+const pendingConflicts = new Map<string, (a: ConflictAnswer) => void>()
+const askConflict = (wc: WebContents) => (req: ConflictRequest) =>
+  new Promise<ConflictAnswer>((resolve) => {
+    const id = randomUUID()
+    pendingConflicts.set(id, resolve)
+    wc.send('ops:conflict', id, req)
+  })
+
+const CHOICES = new Set(['replace', 'skip', 'keep-both', 'cancel'])
 
 export function registerIpc(): void {
   const fromSender = (e: Electron.IpcMainEvent): BrowserWindow | null => BrowserWindow.fromWebContents(e.sender)
@@ -54,6 +69,36 @@ export function registerIpc(): void {
   ipcMain.on('shell:reveal', (_, p) => shellService.reveal(path(p)))
   ipcMain.on('shell:open-terminal', (_, p) => shellService.openTerminal(path(p)))
   ipcMain.on('shell:copy-paths', (_, list, style) => void shellService.copyPaths(paths(list), style === 'posix' ? 'posix' : 'windows'))
+
+  ipcMain.on('shell:start-drag', async (e, list) => {
+    const files = paths(list)
+    if (!files.length) return
+    e.sender.startDrag({ file: files[0], files, icon: await app.getFileIcon(files[0], { size: 'normal' }) })
+  })
+
+  for (const kind of ['copy', 'move'] as const) {
+    ipcMain.handle(`ops:${kind}`, (e, src, dest, conflict) =>
+      ops.transfer(
+        kind,
+        paths(src),
+        path(dest),
+        ['replace', 'skip', 'keep-both'].includes(conflict) ? conflict : 'ask',
+        (p) => !e.sender.isDestroyed() && e.sender.send('ops:progress', p),
+        askConflict(e.sender)
+      )
+    )
+  }
+  ipcMain.on('ops:conflict-reply', (_, id, answer) => {
+    const resolve = pendingConflicts.get(id)
+    pendingConflicts.delete(id)
+    resolve?.({ choice: CHOICES.has(answer?.choice) ? answer.choice : 'cancel', applyToAll: !!answer?.applyToAll })
+  })
+  ipcMain.handle('ops:trash', (_, list) => ops.trash(paths(list)))
+  ipcMain.handle('ops:delete', (_, list) => ops.deletePermanently(paths(list)))
+  ipcMain.handle('ops:new-file', (_, parent, name) => ops.newFile(path(parent), fileName(name)))
+  ipcMain.on('ops:pause', (_, id) => ops.pause(String(id)))
+  ipcMain.on('ops:resume', (_, id) => ops.resume(String(id)))
+  ipcMain.on('ops:cancel', (_, id) => ops.cancel(String(id)))
 
   ipcMain.handle('settings:get', (_, key) => getSetting(String(key)))
   ipcMain.handle('settings:set', (_, key, value) => setSetting(String(key), value))

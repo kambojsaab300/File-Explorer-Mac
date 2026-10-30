@@ -54,12 +54,19 @@ export const mockApi: KhojAPI = {
       pictures: `${HOME}/Pictures`, music: `${HOME}/Music`, videos: `${HOME}/Movies`
     })
   },
+  // The mock disk is read-only; file operations report success without changing anything.
   ops: {
-    copy: async () => '', move: async () => '', trash: async () => {}, deletePermanently: async () => {},
-    pause: () => {}, resume: () => {}, cancel: () => {}, onProgress: () => () => {}
+    copy: async () => ({ state: 'done', moved: [] }),
+    move: async () => ({ state: 'done', moved: [] }),
+    trash: async (paths) => paths.map((from) => ({ from })),
+    deletePermanently: async () => {},
+    newFile: async (parent, name) => joinPath(parent, name),
+    pause: () => {}, resume: () => {}, cancel: () => {},
+    onProgress: () => () => {},
+    onConflict: () => () => {}
   },
   volumes: { list: async () => sim(VOLUMES), eject: async () => note('eject')(), onChange: () => () => {} },
-  shell: { open: async () => note('open')(), reveal: note('reveal'), openTerminal: note('terminal'), copyPaths: note('copy as path') },
+  shell: { open: async () => note('open')(), reveal: note('reveal'), openTerminal: note('terminal'), copyPaths: note('copy as path'), startDrag: () => {}, pathForFile: () => '' },
   window: { minimize: () => {}, toggleMaximize: () => {}, close: () => {}, onMaximized: () => () => {} },
   settings: { get: async () => undefined, set: async () => {} }
 }

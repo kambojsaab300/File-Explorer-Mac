@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { locOf, sortedItems, useStore } from './store'
 import { openEntry } from './components/MainArea'
+import { copy, copyAsPath, deleteSelected, newFolder, paste, startRename, undo, useOps } from './actions'
 
 // Windows shortcuts. Ctrl and ⌘ both work so Mac and Windows muscle memory are covered.
 export function useShortcuts(): void {
@@ -22,6 +23,15 @@ export function useShortcuts(): void {
       else if ((mod && key === 'l') || (e.altKey && key === 'd')) s.setAddressEditing(true)
       else if (e.ctrlKey && e.key === 'Tab') s.activate((s.active + (e.shiftKey ? -1 : 1) + s.tabs.length) % s.tabs.length)
       else if (typing) return
+      else if (useOps.getState().renaming || useOps.getState().menu) return
+      else if (e.key === 'F2') startRename()
+      else if (e.key === 'Delete' || (e.metaKey && e.key === 'Backspace')) void deleteSelected(e.shiftKey)
+      else if (mod && e.shiftKey && key === 'n') void newFolder()
+      else if (mod && e.shiftKey && key === 'c') copyAsPath()
+      else if (mod && key === 'c') copy()
+      else if (mod && key === 'x') copy(true)
+      else if (mod && key === 'v') void paste()
+      else if (mod && key === 'z') void undo()
       else if (e.key === 'Backspace') s.back()
       else if (mod && key === 'a') s.select(sortedItems(tab).map((x) => x.path))
       else if (e.key === 'Enter') {

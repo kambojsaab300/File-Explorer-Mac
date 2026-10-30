@@ -1,5 +1,8 @@
 import { useEffect } from 'react'
+import { initOps } from './actions'
 import { AddressRow } from './components/AddressRow'
+import { ContextMenu } from './components/ContextMenu'
+import { Dialogs } from './components/Dialogs'
 import { CommandBar } from './components/CommandBar'
 import { DetailsPane } from './components/DetailsPane'
 import { MainArea } from './components/MainArea'
@@ -23,7 +26,10 @@ export function App() {
   const detailsPane = useStore((s) => s.detailsPane)
   useSystemTheme()
   useShortcuts()
-  useEffect(() => void useStore.getState().init(), [])
+  useEffect(() => {
+    void useStore.getState().init()
+    initOps()
+  }, [])
 
   return (
     <div className="window">
@@ -37,6 +43,8 @@ export function App() {
         {detailsPane && <DetailsPane />}
       </div>
       <StatusBar />
+      <ContextMenu />
+      <Dialogs />
     </div>
   )
 }

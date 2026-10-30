@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { KhojAPI } from '@shared/types'
 
 function subscribe<T>(channel: string, cb: (value: T) => void): () => void {
@@ -7,8 +7,7 @@ function subscribe<T>(channel: string, cb: (value: T) => void): () => void {
   return () => ipcRenderer.removeListener(channel, listener)
 }
 
-// `ops` arrives with Phase 2 (copy / move / trash).
-const api: Omit<KhojAPI, 'ops'> = {
+const api: KhojAPI = {
   platform: process.platform,
   fs: {
     list: (dir, o) => ipcRenderer.invoke('fs:list', dir, o),
@@ -17,6 +16,24 @@ const api: Omit<KhojAPI, 'ops'> = {
     rename: (p, name) => ipcRenderer.invoke('fs:rename', p, name),
     resolveInput: (text) => ipcRenderer.invoke('fs:resolve-input', text),
     places: () => ipcRenderer.invoke('fs:places')
+  },
+  ops: {
+    copy: (src, dest, conflict) => ipcRenderer.invoke('ops:copy', src, dest, conflict),
+    move: (src, dest, conflict) => ipcRenderer.invoke('ops:move', src, dest, conflict),
+    trash: (paths) => ipcRenderer.invoke('ops:trash', paths),
+    deletePermanently: (paths) => ipcRenderer.invoke('ops:delete', paths),
+    newFile: (parent, name) => ipcRenderer.invoke('ops:new-file', parent, name),
+    pause: (id) => ipcRenderer.send('ops:pause', id),
+    resume: (id) => ipcRenderer.send('ops:resume', id),
+    cancel: (id) => ipcRenderer.send('ops:cancel', id),
+    onProgress: (cb) => subscribe('ops:progress', cb),
+    onConflict: (cb) => {
+      const listener = async (_: unknown, id: string, req: Parameters<typeof cb>[0]): Promise<void> => {
+        ipcRenderer.send('ops:conflict-reply', id, await cb(req))
+      }
+      ipcRenderer.on('ops:conflict', listener)
+      return () => ipcRenderer.removeListener('ops:conflict', listener)
+    }
   },
   volumes: {
     list: () => ipcRenderer.invoke('volumes:list'),
@@ -27,7 +44,10 @@ const api: Omit<KhojAPI, 'ops'> = {
     open: (p) => ipcRenderer.invoke('shell:open', p),
     reveal: (p) => ipcRenderer.send('shell:reveal', p),
     openTerminal: (dir) => ipcRenderer.send('shell:open-terminal', dir),
-    copyPaths: (paths, style) => ipcRenderer.send('shell:copy-paths', paths, style)
+    copyPaths: (paths, style) => ipcRenderer.send('shell:copy-paths', paths, style),
+    startDrag: (paths) => ipcRenderer.send('shell:start-drag', paths),
+    // File.path is gone in modern Electron; this is the supported way to get a dropped file's path.
+    pathForFile: (file) => webUtils.getPathForFile(file).replace(/\\/g, '/')
   },
   window: {
     minimize: () => ipcRenderer.send('window:minimize'),

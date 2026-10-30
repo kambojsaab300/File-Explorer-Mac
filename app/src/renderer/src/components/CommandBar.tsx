@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { copy, currentDir, deleteSelected, paste, startRename, useOps } from '@/actions'
 import { useStore, type View } from '@/store'
 import { Icon } from './Icon'
 
@@ -11,26 +12,39 @@ const VIEWS: [View, string, string][] = [
   ['content', 'Content', 'u-content']
 ]
 
-// File operations arrive in Phase 2; their buttons are shown disabled so the bar already looks right.
-const FILE_OPS: [string, string][] = [
-  ['u-cut', 'Cut'], ['u-copy', 'Copy'], ['u-paste', 'Paste'], ['u-rename', 'Rename'], ['u-share', 'Share'], ['u-delete', 'Delete']
-]
-
 export function CommandBar() {
   const { tabs, active, detailsPane, setView, setSort, toggleDetails } = useStore()
+  const clipboard = useOps((s) => s.clipboard)
   const tab = tabs[active]
   const [menu, setMenu] = useState<'view' | 'sort' | null>(null)
 
+  const canWrite = !!currentDir()
+  const hasSel = canWrite && tab.sel.length > 0
+  const ops: [string, string, boolean, () => void][] = [
+    ['u-cut', 'Cut', hasSel, () => copy(true)],
+    ['u-copy', 'Copy', hasSel, () => copy()],
+    ['u-paste', 'Paste', canWrite && !!clipboard, () => void paste()],
+    ['u-rename', 'Rename', canWrite && tab.sel.length === 1, startRename],
+    ['u-delete', 'Delete', hasSel, () => void deleteSelected()]
+  ]
+
   return (
     <div className="commandbar" onMouseLeave={() => setMenu(null)}>
-      <button className="cmd" disabled>
+      <button
+        className="cmd"
+        disabled={!canWrite}
+        onClick={(e) => {
+          const r = e.currentTarget.getBoundingClientRect()
+          useOps.setState({ menu: { x: r.left, y: r.bottom + 4, kind: 'new' } })
+        }}
+      >
         <Icon name="u-new" />
         <span className="lbl">New</span>
         <Icon name="u-chevron-down" size={12} />
       </button>
       <span className="sep-v" />
-      {FILE_OPS.map(([icon, label]) => (
-        <button key={label} className="cmd" disabled title={label}>
+      {ops.map(([icon, label, enabled, run]) => (
+        <button key={label} className="cmd" disabled={!enabled} title={label} onClick={run}>
           <Icon name={icon} />
         </button>
       ))}

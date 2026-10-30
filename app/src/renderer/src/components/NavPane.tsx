@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { isSpecial } from '@shared/paths'
 import { api } from '@/api/client'
+import { dropTarget } from '@/dnd'
 import { driveIcon, driveLabel, knownFolders } from '@/lib/locations'
 import { locOf, useStore } from '@/store'
 import { Icon } from './Icon'
@@ -61,7 +63,12 @@ function Row(props: RowProps & { defaultOpen?: boolean; children?: React.ReactNo
 
   return (
     <>
-      <div className={`nav-item${selected ? ' sel' : ''}`} style={{ paddingLeft: depth * 8 }} onClick={() => go(loc)}>
+      <div
+        className={`nav-item${selected ? ' sel' : ''}`}
+        style={{ paddingLeft: depth * 8 }}
+        onClick={() => go(loc)}
+        {...dropTarget(isSpecial(loc) ? null : loc)}
+      >
         <span className={`chev${expandable ? '' : ' none'}`} onClick={expandable ? toggle : undefined}>
           {expandable && <Icon name={open ? 'u-chevron-down' : 'u-chevron-right'} size={12} />}
         </span>

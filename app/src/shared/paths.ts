@@ -37,6 +37,16 @@ export function extOf(name: string): string {
   return i > 0 ? name.slice(i + 1).toLowerCase() : ''
 }
 
+// Explorer naming: pasting into the same folder gives "a - Copy.txt", "a - Copy (2).txt";
+// "keep both" on a conflict gives "a (2).txt".
+export function variantName(name: string, style: 'copy' | 'number', n: number): string {
+  const ext = extOf(name)
+  const base = ext ? name.slice(0, -(ext.length + 1)) : name
+  const suffix = ext ? '.' + name.slice(-ext.length) : ''
+  if (style === 'copy') return `${base} - Copy${n > 1 ? ` (${n})` : ''}${suffix}`
+  return `${base} (${n + 1})${suffix}`
+}
+
 export function volumeOf(p: Path, vols: Volume[]): Volume | undefined {
   // Longest mount wins, so "/Volumes/MyDATA/x" beats "/".
   let best: Volume | undefined

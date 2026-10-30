@@ -45,6 +45,30 @@ export interface OpProgress {
 
 export type Conflict = 'replace' | 'skip' | 'keep-both' | 'ask'
 
+export interface ConflictRequest {
+  opId: string
+  src: Entry
+  dest: Entry
+  remaining: number
+}
+export interface ConflictAnswer {
+  choice: Exclude<Conflict, 'ask'> | 'cancel'
+  applyToAll: boolean
+}
+
+// What an operation actually did, so the renderer can undo it.
+export interface OpResult {
+  state: 'done' | 'cancelled' | 'error'
+  moved: { from: Path; to: Path }[]
+  error?: OpProgress['error']
+}
+
+export interface TrashResult {
+  from: Path
+  // Where the item landed in the Trash, when the OS lets us find out (needed for Undo).
+  trashedTo?: Path
+}
+
 export type SpecialLocation = 'thispc' | 'home' | 'gallery' | 'network' | 'trash'
 
 export interface Places {
@@ -70,14 +94,17 @@ export interface KhojAPI {
     places(): Promise<Places>
   }
   ops: {
-    copy(src: Path[], dest: Path, conflict: Conflict): Promise<string>
-    move(src: Path[], dest: Path, conflict: Conflict): Promise<string>
-    trash(paths: Path[]): Promise<void>
+    // Resolves when the whole job finishes; progress streams through onProgress meanwhile.
+    copy(src: Path[], dest: Path, conflict: Conflict): Promise<OpResult>
+    move(src: Path[], dest: Path, conflict: Conflict): Promise<OpResult>
+    trash(paths: Path[]): Promise<TrashResult[]>
     deletePermanently(paths: Path[]): Promise<void>
+    newFile(parent: Path, name: string): Promise<Path>
     pause(opId: string): void
     resume(opId: string): void
     cancel(opId: string): void
     onProgress(cb: (p: OpProgress) => void): Unsubscribe
+    onConflict(cb: (c: ConflictRequest) => Promise<ConflictAnswer>): Unsubscribe
   }
   volumes: {
     list(): Promise<Volume[]>
@@ -89,8 +116,9 @@ export interface KhojAPI {
     reveal(p: Path): void
     openTerminal(dir: Path): void
     copyPaths(paths: Path[], style: 'windows' | 'posix'): void
+    startDrag(paths: Path[]): void
+    pathForFile(file: File): string
   }
-  // Phase 2 adds `ops`; until then it is absent at runtime.
   window: {
     minimize(): void
     toggleMaximize(): void
