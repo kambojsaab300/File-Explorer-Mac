@@ -38,16 +38,16 @@ export function EntryIcon({ entry, size = 16 }: { entry: Entry; size?: number })
 // Explorer selection rules: click selects one, Ctrl/⌘ toggles, Shift extends from the anchor.
 function useClickSelect(order: string[]) {
   const tab = useTab()
-  const select = useStore((s) => s.select)
+  const selectTab = useStore((s) => s.selectTab)
   return (path: string, e: React.MouseEvent): void => {
     if (e.shiftKey && tab.anchor) {
       const a = order.indexOf(tab.anchor)
       const b = order.indexOf(path)
-      select(order.slice(Math.min(a, b), Math.max(a, b) + 1))
+      selectTab(tab.id, order.slice(Math.min(a, b), Math.max(a, b) + 1))
     } else if (e.ctrlKey || e.metaKey) {
-      select(tab.sel.includes(path) ? tab.sel.filter((p) => p !== path) : [...tab.sel, path], path)
+      selectTab(tab.id, tab.sel.includes(path) ? tab.sel.filter((p) => p !== path) : [...tab.sel, path], path)
     } else {
-      select([path], path)
+      selectTab(tab.id, [path], path)
     }
   }
 }
@@ -164,12 +164,21 @@ export function MainArea() {
 }
 
 function ThisPC() {
-  const { volumes, openDiskAnalyzer } = useStore()
+  const { volumes, openDiskAnalyzer, selectTab } = useStore()
   const tab = useTab()
   const go = useStore((s) => s.go)
   const onClick = useClickSelect(volumes.map((v) => v.mount))
   return (
-    <div className="scroll">
+    <div
+      className="scroll"
+      onContextMenu={(e) => {
+        if (e.target === e.currentTarget) {
+          e.preventDefault()
+          selectTab(tab.id, [], null)
+          openMenu(e, 'background')
+        }
+      }}
+    >
       <div className="ghead">
         <Icon name="u-chevron-down" size={12} />
         <span>Devices and drives</span>
@@ -181,8 +190,21 @@ function ThisPC() {
             <div
               key={v.id}
               className={`drive it${tab.sel.includes(v.mount) ? ' sel' : ''}`}
+              onMouseDown={(ev) => {
+                if (ev.button === 2 && !tab.sel.includes(v.mount)) {
+                  selectTab(tab.id, [v.mount], v.mount)
+                }
+              }}
               onClick={(e) => onClick(v.mount, e)}
               onDoubleClick={() => go(v.mount)}
+              onContextMenu={(ev) => {
+                ev.preventDefault()
+                ev.stopPropagation()
+                if (!tab.sel.includes(v.mount)) {
+                  selectTab(tab.id, [v.mount], v.mount)
+                }
+                openMenu(ev, 'item')
+              }}
             >
               <Icon name={driveIcon(v)} size={48} />
               <div className="meta">
@@ -216,7 +238,8 @@ function ThisPC() {
 }
 
 function Home() {
-  const { places, volumes, go, pinned } = useStore()
+  const { places, volumes, go, pinned, selectTab } = useStore()
+  const activeTab = useTab()
   const [tab, setTab] = useState<'recent' | 'favorites'>('recent')
   const [recents, setRecents] = useState<Entry[]>([])
   const [loading, setLoading] = useState(false)
@@ -292,7 +315,31 @@ function Home() {
           </div>
           <div className="items">
             {recents.map((e) => (
-              <div key={e.path} className="it" onDoubleClick={() => openEntry(e)}>
+              <div
+                key={e.path}
+                className={`it${activeTab.sel.includes(e.path) ? ' sel' : ''}`}
+                onMouseDown={(ev) => {
+                  if (ev.button === 2 && !activeTab.sel.includes(e.path)) {
+                    selectTab(activeTab.id, [e.path], e.path)
+                  }
+                }}
+                onClick={(ev) => {
+                  if (ev.ctrlKey || ev.metaKey) {
+                    selectTab(activeTab.id, activeTab.sel.includes(e.path) ? activeTab.sel.filter((p) => p !== e.path) : [...activeTab.sel, e.path], e.path)
+                  } else {
+                    selectTab(activeTab.id, [e.path], e.path)
+                  }
+                }}
+                onDoubleClick={() => openEntry(e)}
+                onContextMenu={(ev) => {
+                  ev.preventDefault()
+                  ev.stopPropagation()
+                  if (!activeTab.sel.includes(e.path)) {
+                    selectTab(activeTab.id, [e.path], e.path)
+                  }
+                  openMenu(ev, 'item')
+                }}
+              >
                 <div>
                   <Icon name={iconOf(e)} />
                   <span className="nm">{e.name}</span>
@@ -321,7 +368,8 @@ function Home() {
 }
 
 function Gallery() {
-  const { places } = useStore()
+  const { places, selectTab } = useStore()
+  const activeTab = useTab()
   const [images, setImages] = useState<Entry[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -364,7 +412,32 @@ function Gallery() {
           </div>
           <div className="gal">
             {items.map((e) => (
-              <div key={e.path} className="it" title={e.name} onDoubleClick={() => openEntry(e)}>
+              <div
+                key={e.path}
+                className={`it${activeTab.sel.includes(e.path) ? ' sel' : ''}`}
+                title={e.name}
+                onMouseDown={(ev) => {
+                  if (ev.button === 2 && !activeTab.sel.includes(e.path)) {
+                    selectTab(activeTab.id, [e.path], e.path)
+                  }
+                }}
+                onClick={(ev) => {
+                  if (ev.ctrlKey || ev.metaKey) {
+                    selectTab(activeTab.id, activeTab.sel.includes(e.path) ? activeTab.sel.filter((p) => p !== e.path) : [...activeTab.sel, e.path], e.path)
+                  } else {
+                    selectTab(activeTab.id, [e.path], e.path)
+                  }
+                }}
+                onDoubleClick={() => openEntry(e)}
+                onContextMenu={(ev) => {
+                  ev.preventDefault()
+                  ev.stopPropagation()
+                  if (!activeTab.sel.includes(e.path)) {
+                    selectTab(activeTab.id, [e.path], e.path)
+                  }
+                  openMenu(ev, 'item')
+                }}
+              >
                 <Icon name={iconOf(e)} size={64} />
                 <span className="gal-name">{e.name}</span>
               </div>
@@ -504,7 +577,7 @@ function FolderView() {
   const items = useMemo(() => sortedItems(tab), [tab.items, tab.results, tab.sort, tab.search])
   const order = useMemo(() => items.map((e) => e.path), [items])
   const onClick = useClickSelect(order)
-  const clearSel = useStore((s) => s.select)
+  const selectTab = useStore((s) => s.selectTab)
   const clipboard = useOps((s) => s.clipboard)
   const cut = new Set(clipboard?.cut ? clipboard.paths : [])
 
@@ -512,23 +585,40 @@ function FolderView() {
 
   const itemProps = (e: Entry) => ({
     className: `it${tab.sel.includes(e.path) ? ' sel' : ''}${cut.has(e.path) ? ' cut' : ''}`,
+    onMouseDown: (ev: React.MouseEvent) => {
+      // In Windows: Right-click selects an unselected item immediately on mousedown
+      if (ev.button === 2) {
+        if (!tab.sel.includes(e.path)) {
+          selectTab(tab.id, [e.path], e.path)
+        }
+      }
+    },
     onClick: (ev: React.MouseEvent) => onClick(e.path, ev),
     onDoubleClick: () => openEntry(e),
     onAuxClick: (ev: React.MouseEvent) => ev.button === 1 && openEntry(e, true),
     onContextMenu: (ev: React.MouseEvent) => {
+      ev.preventDefault()
       ev.stopPropagation()
-      if (!tab.sel.includes(e.path)) clearSel([e.path], e.path)
+      if (!tab.sel.includes(e.path)) {
+        selectTab(tab.id, [e.path], e.path)
+      }
       openMenu(ev, 'item')
     },
     ...dragSource(e.path),
     ...(e.kind === 'dir' ? dropTarget(e.path) : {})
   })
 
-  // Right-click or drop on empty space targets the folder itself.
+  // Right-click or drop on empty space targets the folder itself and clears selection
   const backgroundProps = {
-    onClick: (e: React.MouseEvent) => e.target === e.currentTarget && clearSel([], null),
+    onMouseDown: (e: React.MouseEvent) => {
+      if (e.target === e.currentTarget && (e.button === 0 || e.button === 2)) {
+        selectTab(tab.id, [], null)
+      }
+    },
+    onClick: (e: React.MouseEvent) => e.target === e.currentTarget && selectTab(tab.id, [], null),
     onContextMenu: (e: React.MouseEvent) => {
-      clearSel([], null)
+      e.preventDefault()
+      selectTab(tab.id, [], null)
       openMenu(e, 'background')
     },
     ...dropTarget(locOf(tab))

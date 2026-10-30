@@ -4,6 +4,7 @@ import { api } from '@/api/client'
 import { dropTarget } from '@/dnd'
 import { driveIcon, driveLabel, knownFolders } from '@/lib/locations'
 import { locOf, useStore } from '@/store'
+import { useOps } from '@/actions'
 import { Icon } from './Icon'
 
 interface RowProps {
@@ -71,6 +72,14 @@ function Row(props: RowProps & { defaultOpen?: boolean; children?: React.ReactNo
         className={`nav-item${selected ? ' sel' : ''}`}
         style={{ paddingLeft: depth * 8 }}
         onClick={() => go(loc)}
+        onContextMenu={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          if (!isSpecial(loc)) {
+            useStore.getState().select([loc], loc)
+            useOps.setState({ menu: { x: e.clientX, y: e.clientY, kind: 'item' } })
+          }
+        }}
         {...dropTarget(isSpecial(loc) ? null : loc)}
       >
         <span className={`chev${expandable ? '' : ' none'}`} onClick={expandable ? toggle : undefined}>

@@ -53,7 +53,8 @@ const refresh = (): void => useStore.getState().refresh()
 
 function tab() {
   const s = useStore.getState()
-  return s.tabs[s.active]
+  const idx = s.splitView && s.focusedPane === 'right' ? s.splitActive : s.active
+  return s.tabs[idx] ?? s.tabs[0]
 }
 
 // The folder the user is looking at, or null on pages like This PC where files can't be created.

@@ -84,6 +84,7 @@ interface State {
   setSort(k: SortKey): void
   setSearch(q: string): void
   select(paths: string[], anchor?: string | null): void
+  selectTab(tabId: number, paths: string[], anchor?: string | null): void
   toggleDetails(): void
   togglePreview(): void
   setAddressEditing(v: boolean): void
@@ -312,6 +313,7 @@ export const useStore = create<State>((set, get) => {
       }, 250)
     },
     select: (sel, anchor) => patchTab(current().id, { sel, ...(anchor !== undefined && { anchor }) }),
+    selectTab: (tabId, sel, anchor) => patchTab(tabId, { sel, ...(anchor !== undefined && { anchor }) }),
     toggleDetails: () =>
       set((s) => ({
         detailsPane: s.detailsPane && s.activePane === 'details' ? false : true,
