@@ -1,12 +1,12 @@
 import { shortSize } from '@/lib/format'
-import { locOf, useStore, useTab } from '@/store'
+import { locOf, useStore, useTab, visibleEntries } from '@/store'
 import { Icon } from './Icon'
 
 export function StatusBar() {
   const tab = useTab()
   const { volumes, setView } = useStore()
-  const count = locOf(tab) === 'thispc' ? volumes.length : tab.items.length
-  const selected = tab.items.filter((e) => tab.sel.includes(e.path))
+  const count = locOf(tab) === 'thispc' ? volumes.length : visibleEntries(tab).length
+  const selected = visibleEntries(tab).filter((e) => tab.sel.includes(e.path))
   // Explorer only shows a size when every selected item is a file.
   const size = selected.length && selected.every((e) => e.kind === 'file') ? shortSize(selected.reduce((s, e) => s + e.size, 0)) : ''
   const plural = (n: number): string => `${n} item${n === 1 ? '' : 's'}`

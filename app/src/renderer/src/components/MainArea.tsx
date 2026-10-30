@@ -1,7 +1,7 @@
 import { useMemo, useRef } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import type { Entry } from '@shared/types'
-import { isSpecial } from '@shared/paths'
+import { isSpecial, parentOf, toDisplay } from '@shared/paths'
 import { api } from '@/api/client'
 import { fmtDate, iconOf, kbSize, shortSize, typeOf } from '@/lib/format'
 import { driveIcon, driveLabel, knownFolders } from '@/lib/locations'
@@ -47,7 +47,7 @@ export function MainArea() {
   if (loc === 'thispc') body = <ThisPC />
   else if (loc === 'home') body = <Home />
   else if (isSpecial(loc)) body = <Placeholder loc={loc} />
-  else if (tab.status === 'error') body = <div className="empty">{tab.error}</div>
+  else if (tab.status === 'error') body = <ErrorState />
   else body = <FolderView />
 
   return (
@@ -119,6 +119,28 @@ function Home() {
   )
 }
 
+// macOS privacy protection (TCC) blocks Desktop, Documents, Downloads and external drives
+// until the user allows it; point them at the right System Settings pane.
+function ErrorState() {
+  const tab = useTab()
+  return (
+    <div className="empty">
+      <Icon name={tab.errorKind === 'permission' ? 'u-lock' : 'u-alert'} size={32} />
+      <p>{tab.error}</p>
+      {tab.errorKind === 'permission' && api.platform === 'darwin' && (
+        <div className="dp-actions" style={{ justifyContent: 'center' }}>
+          <button className="btn primary" onClick={() => api.app.openPrivacySettings('files')}>
+            Grant access
+          </button>
+          <button className="btn" onClick={() => useStore.getState().refresh()}>
+            Try again
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function Placeholder({ loc }: { loc: string }) {
   const text: Record<string, string> = {
     gallery: 'Gallery arrives in version 1.1.',
@@ -130,7 +152,7 @@ function Placeholder({ loc }: { loc: string }) {
 
 function FolderView() {
   const tab = useTab()
-  const items = useMemo(() => sortedItems(tab), [tab.items, tab.sort, tab.search])
+  const items = useMemo(() => sortedItems(tab), [tab.items, tab.results, tab.sort, tab.search])
   const order = useMemo(() => items.map((e) => e.path), [items])
   const onClick = useClickSelect(order)
   const clearSel = useStore((s) => s.select)
@@ -236,7 +258,9 @@ function DetailsList(props: { items: Entry[]; itemProps: (e: Entry) => object; b
   const { items, itemProps, backgroundProps } = props
   const tab = useTab()
   const setSort = useStore((s) => s.setSort)
-  const clearSel = useStore((s) => s.select)
+  const volumes = useStore((s) => s.volumes)
+  // Search results come from many folders, so the third column shows where each one lives.
+  const searching = !!(tab.search.trim() && tab.results)
   const scrollRef = useRef<HTMLDivElement>(null)
   // Rows are virtualised so folders with tens of thousands of entries stay smooth.
   const rows = useVirtualizer({ count: items.length, getScrollElement: () => scrollRef.current, estimateSize: () => 32, overscan: 12 })
@@ -246,7 +270,7 @@ function DetailsList(props: { items: Entry[]; itemProps: (e: Entry) => object; b
       <div className="hdr">
         {COLUMNS.map(([key, label]) => (
           <div key={key} onClick={() => setSort(key)}>
-            {label}
+            {searching && key === 'type' ? 'Folder' : label}
             {tab.sort.key === key && (
               <span className="arrow">
                 <Icon name={tab.sort.dir > 0 ? 'u-chevron-up' : 'u-chevron-down'} size={10} />
@@ -265,7 +289,7 @@ function DetailsList(props: { items: Entry[]; itemProps: (e: Entry) => object; b
                 <Name entry={e} />
               </div>
               <div>{fmtDate(e.mtimeMs)}</div>
-              <div>{typeOf(e)}</div>
+              <div>{searching ? toDisplay(parentOf(e.path) ?? '/', volumes) : typeOf(e)}</div>
               <div>{e.kind === 'file' ? kbSize(e.size) : ''}</div>
             </div>
           )

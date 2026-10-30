@@ -2,7 +2,7 @@ import { toDisplay, parentOf } from '@shared/paths'
 import { api } from '@/api/client'
 import { fmtDate, iconOf, shortSize, typeOf } from '@/lib/format'
 import { driveLabel, locIcon, locLabel } from '@/lib/locations'
-import { locOf, useStore, useTab } from '@/store'
+import { locOf, useStore, useTab, visibleEntries } from '@/store'
 import { Icon } from './Icon'
 import { openEntry } from './MainArea'
 
@@ -43,7 +43,7 @@ export function DetailsPane() {
     }
   }
 
-  const selected = tab.items.filter((e) => tab.sel.includes(e.path))
+  const selected = visibleEntries(tab).filter((e) => tab.sel.includes(e.path))
 
   if (selected.length === 1) {
     const e = selected[0]

@@ -201,3 +201,15 @@ svg { flex: none; display: block; fill: currentColor; }
 .opt:hover { background: var(--c-hover); }
 .opt .t { color: var(--c-accent-text); }
 .all { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+
+/* ---------- Phase 3: options, onboarding ---------- */
+.opt-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 40px; border-bottom: 1px solid var(--c-divider); }
+.opt-row:last-child { border-bottom: 0; }
+.opt-row select { height: 32px; padding: 0 8px; border-radius: var(--radius-control); background: var(--c-input); border: 1px solid var(--c-input-border); color: var(--c-text); }
+.opt-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--c-accent); }
+.dlg p { margin: 0 0 10px; }
+.empty p { margin: 12px 0 16px; }
+.empty > svg { margin: 0 auto; color: var(--c-text-2); }
+/* macOS traffic lights sit at the left of the tab strip when chosen in Options. */
+.mac-buttons .captions { display: none; }
+.mac-buttons .tabstrip { padding-left: 78px; }

@@ -4,7 +4,7 @@ import { create } from 'zustand'
 import type { ConflictAnswer, ConflictRequest, Entry, OpProgress, OpResult, Path } from '@shared/types'
 import { baseName, isSpecial, parentOf, variantName, volumeOf } from '@shared/paths'
 import { api } from './api/client'
-import { locOf, useStore } from './store'
+import { locOf, useStore, visibleEntries } from './store'
 
 type UndoRecord =
   | { type: 'rename'; from: Path; to: Path }
@@ -57,7 +57,7 @@ export function currentDir(): Path | null {
 }
 
 export const selectedPaths = (): Path[] => tab().sel
-export const selectedEntries = (): Entry[] => tab().items.filter((e) => tab().sel.includes(e.path))
+export const selectedEntries = (): Entry[] => visibleEntries(tab()).filter((e) => tab().sel.includes(e.path))
 
 export function explain(e: unknown): string {
   const err = e as { code?: string; message?: string }
@@ -129,7 +129,10 @@ export async function commitRename(path: Path, newName: string): Promise<void> {
 
 export function copy(cut = false): void {
   const paths = selectedPaths().filter((p) => !isSpecial(p))
-  if (paths.length) set({ clipboard: { paths, cut } })
+  if (!paths.length) return
+  set({ clipboard: { paths, cut } })
+  // Also on the system pasteboard so ⌘V works in Finder (Finder pastes it as a copy).
+  api.clipboard.writeFiles(paths)
 }
 
 export async function transfer(kind: 'copy' | 'move', src: Path[], dest: Path): Promise<OpResult | null> {
@@ -149,8 +152,12 @@ export async function transfer(kind: 'copy' | 'move', src: Path[], dest: Path): 
 }
 
 export async function paste(dest = currentDir()): Promise<void> {
-  const { clipboard } = useOps.getState()
-  if (!clipboard || !dest) return
+  if (!dest) return
+  let { clipboard } = useOps.getState()
+  // Files copied in Finder after our own copy win, the same as any other app's clipboard.
+  const fromFinder = await api.clipboard.readFiles().catch(() => [])
+  if (fromFinder.length && fromFinder.join('\0') !== clipboard?.paths.join('\0')) clipboard = { paths: fromFinder, cut: false }
+  if (!clipboard) return
   const result = await transfer(clipboard.cut ? 'move' : 'copy', clipboard.paths, dest)
   // A cut is used up once it lands; a copy can be pasted again.
   if (clipboard.cut && result?.state === 'done') set({ clipboard: null })

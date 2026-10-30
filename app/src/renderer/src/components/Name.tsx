@@ -1,12 +1,16 @@
 import { useEffect, useRef } from 'react'
 import type { Entry } from '@shared/types'
 import { commitRename, useOps } from '@/actions'
+import { useStore } from '@/store'
 
 // An item's name, or the inline rename box while F2 is active on it.
 export function Name({ entry }: { entry: Entry }) {
   const renaming = useOps((s) => s.renaming === entry.path)
-  if (!renaming) return <span className="nm">{entry.name}</span>
-  return <RenameBox entry={entry} />
+  const showExt = useStore((s) => s.prefs.extensions)
+  if (renaming) return <RenameBox entry={entry} />
+  const dot = entry.name.lastIndexOf('.')
+  const label = !showExt && entry.kind === 'file' && dot > 0 ? entry.name.slice(0, dot) : entry.name
+  return <span className="nm">{label}</span>
 }
 
 function RenameBox({ entry }: { entry: Entry }) {
