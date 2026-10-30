@@ -12,6 +12,8 @@ import { MainArea } from './components/MainArea'
 import { NavPane } from './components/NavPane'
 import { Onboarding, OptionsDialog } from './components/Settings'
 import { StatusBar } from './components/StatusBar'
+import { TerminalDrawer } from './components/TerminalDrawer'
+import { DiskAnalyzer } from './components/DiskAnalyzer'
 import { TitleBar } from './components/TitleBar'
 import { useShortcuts } from './keyboard'
 import { useStore } from './store'
@@ -85,9 +87,11 @@ export function App() {
         <MainArea />
         {detailsPane && (activePane === 'preview' ? <PreviewPane /> : <DetailsPane />)}
       </div>
+      <TerminalDrawer />
       <StatusBar />
       <ContextMenu />
       <Dialogs />
+      <DiskAnalyzer />
       {showOptions && <OptionsDialog />}
       <Onboarding />
     </div>

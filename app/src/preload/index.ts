@@ -19,6 +19,7 @@ const api: KhojAPI = {
     readPreview: (p) => ipcRenderer.invoke('fs:read-preview', p),
     computeHash: (p, algo) => ipcRenderer.invoke('fs:hash', p, algo),
     gitInfo: (dir) => ipcRenderer.invoke('fs:git-info', dir),
+    analyzeDisk: (target) => ipcRenderer.invoke('fs:analyze-disk', target),
     mkdir: (parent, name) => ipcRenderer.invoke('fs:mkdir', parent, name),
     createSymlink: (target, linkPath) => ipcRenderer.invoke('fs:create-symlink', target, linkPath),
     rename: (p, name) => ipcRenderer.invoke('fs:rename', p, name),
@@ -96,6 +97,12 @@ const api: KhojAPI = {
   settings: {
     get: (key) => ipcRenderer.invoke('settings:get', key),
     set: (key, value) => ipcRenderer.invoke('settings:set', key, value)
+  },
+  terminal: {
+    exec: (cmd, cwd) => ipcRenderer.invoke('terminal:exec', cmd, cwd),
+    setCwd: (cwd) => ipcRenderer.invoke('terminal:set-cwd', cwd),
+    getCwd: () => ipcRenderer.invoke('terminal:get-cwd'),
+    getDefaultShell: () => ipcRenderer.invoke('terminal:get-shell')
   }
 }
 

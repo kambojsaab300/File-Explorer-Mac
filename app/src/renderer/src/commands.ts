@@ -35,7 +35,9 @@ export function runMenuCommand(command: MenuCommand): void {
     'view-large': () => s.setView('large'),
     'view-list': () => s.setView('list'),
     'view-tiles': () => s.setView('tiles'),
-    'view-content': () => s.setView('content')
+    'view-content': () => s.setView('content'),
+    'toggle-terminal': () => s.toggleTerminal(),
+    'analyze-disk': () => s.openDiskAnalyzer()
   }
   commands[command]?.()
 }

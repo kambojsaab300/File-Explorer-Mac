@@ -216,6 +216,22 @@ export async function paste(dest = currentDir()): Promise<void> {
   if (clipboard.cut && result?.state === 'done') set({ clipboard: null })
 }
 
+export async function copyToOtherPane(move = false): Promise<void> {
+  const s = useStore.getState()
+  if (!s.splitView) return
+  const leftTab = s.tabs[s.active] ?? s.tabs[0]
+  const rightTab = s.tabs[s.splitActive < s.tabs.length ? s.splitActive : s.active === 0 ? 1 : 0] ?? leftTab
+  const srcTab = s.focusedPane === 'left' ? leftTab : rightTab
+  const destTab = s.focusedPane === 'left' ? rightTab : leftTab
+  const destLoc = locOf(destTab)
+  if (isSpecial(destLoc)) return
+  const srcPaths = srcTab.sel.filter((p) => !isSpecial(p))
+  if (!srcPaths.length) return
+  await transfer(move ? 'move' : 'copy', srcPaths, destLoc)
+}
+
+export const moveToOtherPane = (): Promise<void> => copyToOtherPane(true)
+
 // Windows drag rule: same drive moves, another drive copies. Option forces copy, ⌘/Shift forces move.
 export function dropKind(src: Path[], dest: Path, e: { altKey: boolean; metaKey: boolean; shiftKey: boolean }): 'copy' | 'move' {
   if (e.altKey) return 'copy'

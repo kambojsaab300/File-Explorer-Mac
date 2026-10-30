@@ -66,6 +66,55 @@ export const mockApi: KhojAPI = {
     readPreview: async () => ({ kind: 'text', content: 'Mock preview content' }),
     computeHash: async () => 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
     gitInfo: async () => ({ branch: 'main', root: HOME }),
+    analyzeDisk: async (target) => ({
+      rootPath: target,
+      totalSize: 1_335_282_816,
+      totalFiles: 42,
+      totalFolders: 9,
+      categories: {
+        archives: { size: 1_298_000_000, count: 2, color: '#f97316', label: 'Archives' },
+        documents: { size: 35_048_371, count: 6, color: '#eab308', label: 'Documents' },
+        images: { size: 2_400_000, count: 4, color: '#22c55e', label: 'Images' },
+        code: { size: 124_000, count: 18, color: '#3b82f6', label: 'Code & Dev' },
+        video: { size: 0, count: 0, color: '#a855f7', label: 'Video' },
+        audio: { size: 0, count: 0, color: '#06b6d4', label: 'Audio' },
+        other: { size: 214_445, count: 12, color: '#94a3b8', label: 'Other & System' }
+      },
+      topFiles: [
+        { name: 'Backup.zip', path: '/Volumes/MyDATA/Backup.zip', size: 1_200_000_000, extension: 'zip' },
+        { name: 'Khoj-0.1.0.dmg', path: `${HOME}/Downloads/Khoj-0.1.0.dmg`, size: 98_000_000, extension: 'dmg' },
+        { name: 'UI Issues.docx', path: '/Volumes/MyDATA/UI Issues.docx', size: 34_816, extension: 'docx' },
+        { name: 'photo.jpg', path: `${HOME}/Downloads/photo.jpg`, size: 2_400_000, extension: 'jpg' },
+        { name: 'Resume.pdf', path: `${HOME}/Documents/Resume.pdf`, size: 182_004, extension: 'pdf' },
+        { name: 'Budget 2026.xlsx', path: `${HOME}/Documents/Budget 2026.xlsx`, size: 48_211, extension: 'xlsx' }
+      ],
+      tree: {
+        name: baseName(target) || target,
+        path: target,
+        size: 1_335_282_816,
+        kind: 'dir',
+        extension: '',
+        itemCount: 51,
+        children: [
+          { name: 'Backup.zip', path: `${target}/Backup.zip`, size: 1_200_000_000, kind: 'file', extension: 'zip' },
+          {
+            name: 'Dev',
+            path: `${target}/Dev`,
+            size: 102_000_000,
+            kind: 'dir',
+            extension: '',
+            itemCount: 22,
+            children: [
+              { name: 'khoj', path: `${target}/Dev/khoj`, size: 98_000_000, kind: 'dir', extension: '', itemCount: 18 },
+              { name: 'notes.md', path: `${target}/Dev/notes.md`, size: 4_096, kind: 'file', extension: 'md' },
+              { name: 'deploy.sh', path: `${target}/Dev/deploy.sh`, size: 812, kind: 'file', extension: 'sh' }
+            ]
+          },
+          { name: 'UI Issues.docx', path: `${target}/UI Issues.docx`, size: 34_816, kind: 'file', extension: 'docx' },
+          { name: 'Projects', path: `${target}/Projects`, size: 33_248_000, kind: 'dir', extension: '', itemCount: 14 }
+        ]
+      }
+    }),
     mkdir: async (parent, name) => joinPath(parent, name),
     createSymlink: async (target, linkPath) => linkPath,
     rename: async (p, name) => joinPath(p.slice(0, p.lastIndexOf('/')) || '/', name),
@@ -110,5 +159,21 @@ export const mockApi: KhojAPI = {
   volumes: { list: async () => sim(VOLUMES), eject: async () => note('eject')(), onChange: () => () => {} },
   shell: { open: async () => note('open')(), openWith: async () => note('open with')(), reveal: note('reveal'), openTerminal: note('terminal'), share: note('share'), copyPaths: note('copy as path'), startDrag: () => {}, pathForFile: () => '' },
   window: { newWindow: () => {}, minimize: () => {}, toggleMaximize: () => {}, close: () => {}, quickLook: note('quick look'), onMaximized: () => () => {} },
-  settings: { get: async () => undefined, set: async () => {} }
+  settings: { get: async () => undefined, set: async () => {} },
+  terminal: {
+    exec: async (cmd, cwd = '/Volumes/MyDATA/Dev') => {
+      const trimmed = cmd.trim()
+      if (trimmed === 'pwd') return { stdout: `${cwd}\n`, stderr: '', code: 0, cwd }
+      if (trimmed === 'git status') return { stdout: 'On branch main\nYour branch is up to date with \'origin/main\'.\n\nnothing to commit, working tree clean\n', stderr: '', code: 0, cwd }
+      if (trimmed === 'ls' || trimmed === 'dir') return { stdout: 'khoj\nnotes.md\ndeploy.sh\nUI Issues.docx\nBackup.zip\n', stderr: '', code: 0, cwd }
+      if (trimmed.startsWith('cd ')) {
+        const next = trimmed.slice(3).trim()
+        return { stdout: '', stderr: '', code: 0, cwd: next.startsWith('/') ? next : `${cwd}/${next}` }
+      }
+      return { stdout: `[khoj-terminal] Executed: ${cmd}\n`, stderr: '', code: 0, cwd }
+    },
+    setCwd: async (cwd) => cwd,
+    getCwd: async () => '/Volumes/MyDATA/Dev',
+    getDefaultShell: async () => '/bin/zsh'
+  }
 }

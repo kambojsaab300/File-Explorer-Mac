@@ -8,7 +8,7 @@ import { Icon } from './Icon'
 
 export function StatusBar() {
   const tab = useTab()
-  const { volumes, setView } = useStore()
+  const { volumes, setView, terminalOpen, toggleTerminal, openDiskAnalyzer } = useStore()
   const loc = locOf(tab)
   const count = loc === 'thispc' ? volumes.length : visibleEntries(tab).length
   const selected = visibleEntries(tab).filter((e) => tab.sel.includes(e.path))
@@ -60,6 +60,23 @@ export function StatusBar() {
         </>
       )}
       <div className="right">
+        <button
+          className={`status-tool-btn${terminalOpen ? ' on' : ''}`}
+          title="Toggle Embedded Terminal (Ctrl+~)"
+          onClick={toggleTerminal}
+        >
+          <Icon name="u-terminal" size={13} />
+          <span>Terminal</span>
+        </button>
+        <button
+          className="status-tool-btn"
+          title="Analyze Storage (WinDirStat / TreeSize)"
+          onClick={() => openDiskAnalyzer()}
+        >
+          <Icon name="u-pie-chart" size={13} />
+          <span>Storage</span>
+        </button>
+        <span className="bar" />
         <button className={tab.view === 'details' ? 'on' : ''} title="Details" onClick={() => setView('details')}>
           <Icon name="u-details-view" size={14} />
         </button>

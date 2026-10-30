@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { api } from './api/client'
 import { locOf, sortedItems, useStore } from './store'
 import { openEntry } from './components/MainArea'
-import { copy, copyAsPath, deleteSelected, newFolder, paste, showProperties, startRename, undo, useOps } from './actions'
+import { copy, copyAsPath, copyToOtherPane, deleteSelected, moveToOtherPane, newFolder, paste, showProperties, startRename, undo, useOps } from './actions'
 
 let typeBuffer = ''
 let typeTimeout: ReturnType<typeof setTimeout> | undefined
@@ -39,16 +39,29 @@ export function useShortcuts(): void {
       const typing = (e.target as HTMLElement).closest('input, textarea')
       const key = e.key.toLowerCase()
 
-      if (e.altKey && e.key === 'ArrowLeft') s.back()
+      if (mod && (e.key === '`' || e.key === '~' || e.code === 'Backquote')) s.toggleTerminal()
+      else if (e.altKey && e.key === 'ArrowLeft') s.back()
       else if (e.altKey && e.key === 'ArrowRight') s.forward()
       else if (e.altKey && e.key === 'ArrowUp') s.up()
       else if (e.altKey && e.shiftKey && key === 'p') s.toggleDetails()
       else if (e.altKey && key === 'p') s.togglePreview()
       else if (e.altKey && e.key === '2') s.toggleSplitView()
-      else if (e.key === 'F6' && s.splitView) s.setFocusedPane(s.focusedPane === 'left' ? 'right' : 'left')
+      else if (e.key === 'F6' && s.splitView) {
+        const leftTab = s.tabs[s.active] ?? s.tabs[0]
+        const rightTab = s.tabs[s.splitActive < s.tabs.length ? s.splitActive : s.active === 0 ? 1 : 0] ?? leftTab
+        const activeTab = s.focusedPane === 'left' ? leftTab : rightTab
+        if (activeTab.sel.length > 0) void moveToOtherPane()
+        else s.setFocusedPane(s.focusedPane === 'left' ? 'right' : 'left')
+      }
       else if ((e.altKey && e.key === 'Enter') || (mod && key === 'i')) void showProperties()
       else if (e.altKey && e.key === 'F4') api.window.close()
-      else if (e.key === 'F5') s.refresh()
+      else if (e.key === 'F5') {
+        const leftTab = s.tabs[s.active] ?? s.tabs[0]
+        const rightTab = s.tabs[s.splitActive < s.tabs.length ? s.splitActive : s.active === 0 ? 1 : 0] ?? leftTab
+        const activeTab = s.focusedPane === 'left' ? leftTab : rightTab
+        if (s.splitView && activeTab.sel.length > 0) void copyToOtherPane()
+        else s.refresh()
+      }
       else if ((mod && (key === 'e' || key === 'f')) || e.key === 'F3') {
         const inp = document.querySelector('.search input') as HTMLInputElement | null
         inp?.focus()

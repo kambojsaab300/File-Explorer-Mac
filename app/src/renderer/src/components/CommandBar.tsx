@@ -136,6 +136,15 @@ export function CommandBar() {
               Properties
             </button>
             <div style={{ height: 1, background: 'var(--c-divider-strong)', margin: '4px 0' }} />
+            <button className="mi" onClick={() => (useStore.getState().openDiskAnalyzer(), setMenu(null))}>
+              <Icon name="u-pie-chart" />
+              Disk Space Analyzer
+            </button>
+            <button className="mi" onClick={() => (useStore.getState().toggleTerminal(), setMenu(null))}>
+              <Icon name="u-terminal" />
+              Embedded Terminal (Ctrl+~)
+            </button>
+            <div style={{ height: 1, background: 'var(--c-divider-strong)', margin: '4px 0' }} />
             <button className="mi" onClick={() => (useStore.setState({ showOptions: true }), setMenu(null))}>
               Options
             </button>

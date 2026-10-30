@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, shell, type WebContents } from 'electron'
 import { createMainWindow } from './window'
 import * as clipboard from './services/clipboard.service'
 import * as watch from './services/watch.service'
+import * as terminalService from './services/terminal.service'
 import { randomUUID } from 'node:crypto'
 import { isAbsolute } from 'node:path'
 import type { ConflictAnswer, ConflictRequest } from '@shared/types'
@@ -69,6 +70,7 @@ export function registerIpc(): void {
   ipcMain.handle('fs:read-preview', (_, p) => fsService.readPreview(path(p)))
   ipcMain.handle('fs:hash', (_, p, algo) => fsService.computeHash(path(p), algo === 'md5' ? 'md5' : 'sha256'))
   ipcMain.handle('fs:git-info', (_, dir) => fsService.gitInfo(path(dir)))
+  ipcMain.handle('fs:analyze-disk', (_, target) => fsService.analyzeDisk(path(target)))
   ipcMain.handle('fs:mkdir', (_, parent, name) => fsService.mkdir(path(parent), fileName(name)))
   ipcMain.handle('fs:create-symlink', (_, target, linkPath) => fsService.createSymlink(path(target), path(linkPath)))
   ipcMain.handle('fs:rename', (_, p, name) => fsService.rename(path(p), fileName(name)))
@@ -163,4 +165,9 @@ export function registerIpc(): void {
 
   ipcMain.handle('settings:get', (_, key) => getSetting(String(key)))
   ipcMain.handle('settings:set', (_, key, value) => setSetting(String(key), value))
+
+  ipcMain.handle('terminal:exec', (_, cmd, cwd) => terminalService.execCommand(String(cmd ?? ''), cwd ? path(cwd) : undefined))
+  ipcMain.handle('terminal:set-cwd', (_, cwd) => terminalService.setTerminalCwd(path(cwd)))
+  ipcMain.handle('terminal:get-cwd', () => terminalService.getTerminalCwd())
+  ipcMain.handle('terminal:get-shell', () => terminalService.getDefaultShell())
 }

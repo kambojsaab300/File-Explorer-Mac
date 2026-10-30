@@ -64,6 +64,7 @@ function itemMenu(): { row: Item[]; list: (Item | '-')[] } {
       { label: 'Copy as path', icon: 'u-link', accel: 'Ctrl+Shift+C', run: copyAsPath },
       { label: 'Show in Finder', icon: 'u-folder', run: revealSelected },
       { label: 'Open in Terminal', icon: 'u-terminal', run: openInTerminal },
+      ...(one?.kind === 'dir' ? [{ label: 'Analyze disk space (TreeSize)', icon: 'u-pie-chart', run: () => useStore.getState().openDiskAnalyzer(one.path) }] : []),
       '-',
       { label: 'Properties', icon: 'u-properties', accel: 'Alt+Enter', run: () => void showProperties(one?.path) }
     ]
@@ -85,6 +86,8 @@ function backgroundMenu(): (Item | '-')[] {
     '-',
     { label: 'Copy as path', icon: 'u-link', disabled: !canWrite, run: copyAsPath },
     { label: 'Open in Terminal', icon: 'u-terminal', disabled: !canWrite, run: openInTerminal },
+    { label: 'Open embedded terminal', icon: 'u-terminal', accel: `${mod}~`, run: () => useStore.getState().toggleTerminal() },
+    { label: 'Analyze disk space', icon: 'u-pie-chart', disabled: !currentDir(), run: () => useStore.getState().openDiskAnalyzer(currentDir() ?? undefined) },
     '-',
     { label: 'Properties', icon: 'u-properties', accel: 'Alt+Enter', disabled: !currentDir(), run: () => void showProperties(currentDir() ?? undefined) }
   ]

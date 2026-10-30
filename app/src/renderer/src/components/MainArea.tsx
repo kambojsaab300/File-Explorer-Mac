@@ -6,7 +6,7 @@ import { api } from '@/api/client'
 import { fmtDate, iconOf, kbSize, shortSize, typeOf } from '@/lib/format'
 import { driveIcon, driveLabel, knownFolders, locLabel } from '@/lib/locations'
 import { locOf, sortedItems, useStore, useTab, TabContext, type SortKey, type Tab } from '@/store'
-import { useOps } from '@/actions'
+import { copyToOtherPane, moveToOtherPane, useOps } from '@/actions'
 import { dragSource, dropTarget } from '@/dnd'
 import { Icon } from './Icon'
 import { Name } from './Name'
@@ -91,20 +91,71 @@ export function MainArea() {
     return <SinglePane tab={leftTab} isActive={true} />
   }
 
+  const leftSelCount = leftTab.sel.length
+  const rightSelCount = rightTab.sel.length
+
+  const swapPanes = () => {
+    const s = useStore.getState()
+    const oldActive = s.active
+    const oldSplit = s.splitActive
+    s.activate(oldSplit)
+    s.setSplitActive(oldActive)
+  }
+
   return (
     <div className="dual-pane-container">
       <div className={`dual-pane-col${focusedPane === 'left' ? ' pane-focused' : ''}`}>
         <div className="dual-pane-bar" onClick={() => setFocusedPane('left')}>
-          <span className="dual-pane-badge">Pane 1</span>
-          <span className="dual-pane-title">{locLabel(locOf(leftTab), volumes, places)}</span>
+          <div className="dual-pane-info">
+            <span className="dual-pane-badge">Pane 1</span>
+            <span className="dual-pane-title">{locLabel(locOf(leftTab), volumes, places)}</span>
+          </div>
+          <div className="dual-pane-actions" onClick={(e) => e.stopPropagation()}>
+            {focusedPane === 'left' && leftSelCount > 0 && (
+              <>
+                <button className="dp-btn" title="Copy selected items to Pane 2 (F5)" onClick={() => void copyToOtherPane()}>
+                  <Icon name="u-copy" size={12} />
+                  <span>Copy to P2 (F5)</span>
+                </button>
+                <button className="dp-btn" title="Move selected items to Pane 2 (F6)" onClick={() => void moveToOtherPane()}>
+                  <Icon name="u-cut" size={12} />
+                  <span>Move to P2 (F6)</span>
+                </button>
+              </>
+            )}
+            <button className="dp-btn dp-swap" title="Swap Panes" onClick={swapPanes}>
+              <Icon name="u-sort" size={12} />
+              <span>Swap</span>
+            </button>
+          </div>
         </div>
         <SinglePane tab={leftTab} isActive={focusedPane === 'left'} onFocus={() => setFocusedPane('left')} />
       </div>
       <div className="splitter" />
       <div className={`dual-pane-col${focusedPane === 'right' ? ' pane-focused' : ''}`}>
         <div className="dual-pane-bar" onClick={() => setFocusedPane('right')}>
-          <span className="dual-pane-badge">Pane 2</span>
-          <span className="dual-pane-title">{locLabel(locOf(rightTab), volumes, places)}</span>
+          <div className="dual-pane-info">
+            <span className="dual-pane-badge">Pane 2</span>
+            <span className="dual-pane-title">{locLabel(locOf(rightTab), volumes, places)}</span>
+          </div>
+          <div className="dual-pane-actions" onClick={(e) => e.stopPropagation()}>
+            {focusedPane === 'right' && rightSelCount > 0 && (
+              <>
+                <button className="dp-btn" title="Copy selected items to Pane 1 (F5)" onClick={() => void copyToOtherPane()}>
+                  <Icon name="u-copy" size={12} />
+                  <span>Copy to P1 (F5)</span>
+                </button>
+                <button className="dp-btn" title="Move selected items to Pane 1 (F6)" onClick={() => void moveToOtherPane()}>
+                  <Icon name="u-cut" size={12} />
+                  <span>Move to P1 (F6)</span>
+                </button>
+              </>
+            )}
+            <button className="dp-btn dp-swap" title="Swap Panes" onClick={swapPanes}>
+              <Icon name="u-sort" size={12} />
+              <span>Swap</span>
+            </button>
+          </div>
         </div>
         <SinglePane tab={rightTab} isActive={focusedPane === 'right'} onFocus={() => setFocusedPane('right')} />
       </div>
@@ -113,7 +164,7 @@ export function MainArea() {
 }
 
 function ThisPC() {
-  const { volumes } = useStore()
+  const { volumes, openDiskAnalyzer } = useStore()
   const tab = useTab()
   const go = useStore((s) => s.go)
   const onClick = useClickSelect(volumes.map((v) => v.mount))
@@ -139,9 +190,22 @@ function ThisPC() {
                 <div className={`dbar${v.total && v.free / v.total < 0.1 ? ' low' : ''}`}>
                   <i style={{ width: `${(used * 100).toFixed(1)}%` }} />
                 </div>
-                <span className="free">
-                  {shortSize(v.free)} free of {shortSize(v.total)}
-                </span>
+                <div className="free-row">
+                  <span className="free">
+                    {shortSize(v.free)} free of {shortSize(v.total)}
+                  </span>
+                  <button
+                    className="drive-storage-pill"
+                    title="Analyze storage space (WinDirStat / TreeSize)"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      openDiskAnalyzer(v.mount)
+                    }}
+                  >
+                    <Icon name="u-pie-chart" size={11} />
+                    <span>Analyze</span>
+                  </button>
+                </div>
               </div>
             </div>
           )

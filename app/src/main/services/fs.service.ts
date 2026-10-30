@@ -2,7 +2,7 @@ import { app } from 'electron'
 import { createReadStream, type Dirent, type Stats } from 'node:fs'
 import { chmod, lstat, mkdir as mkdirFs, open as openFs, opendir, readFile, rename as renameFs, stat as statFs, symlink as symlinkFs } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
-import type { Entry, FileProperties, GitRepoInfo, Path, PreviewData, SpecialLocation } from '@shared/types'
+import type { DiskAnalysisResult, DiskUsageItem, Entry, FileProperties, GitRepoInfo, Path, PreviewData, SpecialLocation } from '@shared/types'
 import { baseName, extOf, joinPath, parentOf, parseDisplay, toDisplay } from '@shared/paths'
 import { listVolumes } from './volumes.service'
 
@@ -336,4 +336,156 @@ export async function gitInfo(dir: Path): Promise<GitRepoInfo | null> {
     curr = parent
   }
   return null
+}
+
+const EXT_CATEGORIES: Record<string, { label: string; color: string; exts: Set<string> }> = {
+  video: {
+    label: 'Video',
+    color: '#a855f7',
+    exts: new Set(['mp4', 'mov', 'mkv', 'avi', 'webm', 'wmv', 'm4v', 'flv'])
+  },
+  images: {
+    label: 'Images',
+    color: '#22c55e',
+    exts: new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'svg', 'tiff', 'raw', 'bmp', 'ico'])
+  },
+  audio: {
+    label: 'Audio',
+    color: '#06b6d4',
+    exts: new Set(['mp3', 'wav', 'flac', 'aac', 'm4a', 'ogg', 'wma', 'aiff'])
+  },
+  documents: {
+    label: 'Documents',
+    color: '#eab308',
+    exts: new Set(['pdf', 'docx', 'xlsx', 'pptx', 'doc', 'xls', 'ppt', 'txt', 'csv', 'md', 'rtf', 'pages', 'numbers', 'key'])
+  },
+  archives: {
+    label: 'Archives',
+    color: '#f97316',
+    exts: new Set(['zip', 'tar', 'gz', 'dmg', 'pkg', 'iso', '7z', 'rar', 'bz2', 'xz'])
+  },
+  code: {
+    label: 'Code & Dev',
+    color: '#3b82f6',
+    exts: new Set(['ts', 'tsx', 'js', 'jsx', 'py', 'json', 'html', 'css', 'rs', 'go', 'c', 'cpp', 'h', 'java', 'swift', 'kt', 'sql', 'sh', 'yaml', 'yml', 'xml'])
+  }
+}
+
+export async function analyzeDisk(target: Path): Promise<DiskAnalysisResult> {
+  const normTarget = toPosix(target)
+  let totalFiles = 0
+  let totalFolders = 0
+  const allFiles: Array<{ name: string; path: Path; size: number; extension: string }> = []
+
+  const categories: Record<string, { size: number; count: number; color: string; label: string }> = {
+    video: { size: 0, count: 0, color: '#a855f7', label: 'Video' },
+    images: { size: 0, count: 0, color: '#22c55e', label: 'Images' },
+    audio: { size: 0, count: 0, color: '#06b6d4', label: 'Audio' },
+    documents: { size: 0, count: 0, color: '#eab308', label: 'Documents' },
+    archives: { size: 0, count: 0, color: '#f97316', label: 'Archives' },
+    code: { size: 0, count: 0, color: '#3b82f6', label: 'Code & Dev' },
+    other: { size: 0, count: 0, color: '#94a3b8', label: 'Other & System' }
+  }
+
+  function categorize(ext: string, size: number) {
+    const cleanExt = ext.toLowerCase()
+    let found = false
+    for (const [key, cat] of Object.entries(EXT_CATEGORIES)) {
+      if (cat.exts.has(cleanExt)) {
+        categories[key].size += size
+        categories[key].count += 1
+        found = true
+        break
+      }
+    }
+    if (!found) {
+      categories.other.size += size
+      categories.other.count += 1
+    }
+  }
+
+  async function walk(dirPath: Path, depth = 0): Promise<DiskUsageItem> {
+    const nodeName = baseName(dirPath) || dirPath
+    let dirSize = 0
+    let dirItemCount = 0
+    const children: DiskUsageItem[] = []
+
+    try {
+      const dirEntries = await opendir(dirPath, { bufferSize: 128 })
+      for await (const de of dirEntries) {
+        const full = joinPath(dirPath, de.name)
+        try {
+          const st = await lstat(full)
+          if (st.isSymbolicLink()) continue
+
+          if (st.isDirectory()) {
+            totalFolders += 1
+            if (depth < 4) {
+              const child = await walk(full, depth + 1)
+              dirSize += child.size
+              dirItemCount += 1 + (child.itemCount || 0)
+              children.push(child)
+            } else {
+              dirItemCount += 1
+              children.push({
+                name: de.name,
+                path: full,
+                size: st.size,
+                kind: 'dir',
+                extension: '',
+                itemCount: 1
+              })
+            }
+          } else if (st.isFile()) {
+            totalFiles += 1
+            dirSize += st.size
+            dirItemCount += 1
+            const ext = extOf(de.name)
+            categorize(ext, st.size)
+            allFiles.push({ name: de.name, path: full, size: st.size, extension: ext })
+
+            if (depth < 4) {
+              children.push({
+                name: de.name,
+                path: full,
+                size: st.size,
+                kind: 'file',
+                extension: ext
+              })
+            }
+          }
+        } catch {
+          // Skip unreadable files
+        }
+      }
+    } catch {
+      // Permission or missing directory error
+    }
+
+    children.sort((a, b) => b.size - a.size)
+
+    return {
+      name: nodeName,
+      path: dirPath,
+      size: dirSize,
+      kind: 'dir',
+      extension: '',
+      itemCount: dirItemCount,
+      children
+    }
+  }
+
+  const tree = await walk(normTarget, 0)
+  allFiles.sort((a, b) => b.size - a.size)
+  const topFiles = allFiles.slice(0, 15)
+
+  return {
+    rootPath: normTarget,
+    totalSize: tree.size,
+    totalFiles,
+    totalFolders,
+    categories,
+    topFiles,
+    tree
+  }
 }

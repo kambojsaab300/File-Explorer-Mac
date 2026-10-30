@@ -59,6 +59,9 @@ interface State {
   splitView: boolean
   splitActive: number
   focusedPane: 'left' | 'right'
+  terminalOpen: boolean
+  terminalHeight: number
+  diskAnalyzerTarget: string | null
   init(): Promise<void>
   togglePin(path: string): void
   setPref<K extends keyof Prefs>(key: K, value: Prefs[K]): void
@@ -73,6 +76,10 @@ interface State {
   toggleSplitView(): void
   setFocusedPane(pane: 'left' | 'right'): void
   setSplitActive(index: number): void
+  toggleTerminal(): void
+  setTerminalHeight(h: number): void
+  openDiskAnalyzer(path?: string): void
+  closeDiskAnalyzer(): void
   setView(v: View): void
   setSort(k: SortKey): void
   setSearch(q: string): void
@@ -145,6 +152,9 @@ export const useStore = create<State>((set, get) => {
     splitView: false,
     splitActive: 1,
     focusedPane: 'left',
+    terminalOpen: false,
+    terminalHeight: 240,
+    diskAnalyzerTarget: null,
 
     async init() {
       const [volumes, places, saved, prefs, pinned] = await Promise.all([
@@ -265,6 +275,22 @@ export const useStore = create<State>((set, get) => {
     },
     setSplitActive(index) {
       set({ splitActive: index })
+    },
+    toggleTerminal() {
+      set((s) => ({ terminalOpen: !s.terminalOpen }))
+    },
+    setTerminalHeight(h) {
+      set({ terminalHeight: Math.max(120, Math.min(600, h)) })
+    },
+    openDiskAnalyzer(path) {
+      const target = path || locOf(current())
+      const norm = target === 'thispc' || target === 'home' || target === 'trash' || target === 'gallery' || target === 'network'
+        ? get().places?.home || '/'
+        : target
+      set({ diskAnalyzerTarget: norm })
+    },
+    closeDiskAnalyzer() {
+      set({ diskAnalyzerTarget: null })
     },
 
     setView: (view) => patchTab(current().id, { view }),

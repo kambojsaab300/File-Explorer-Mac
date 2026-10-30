@@ -117,10 +117,38 @@ export type MenuCommand =
   | 'cut' | 'copy' | 'paste' | 'select-all' | 'copy-path' | 'refresh' | 'back' | 'forward' | 'up'
   | 'go-home' | 'go-thispc' | 'go-downloads' | 'focus-address' | 'details-pane' | 'options'
   | 'view-details' | 'view-large' | 'view-list' | 'view-tiles' | 'view-content'
+  | 'toggle-terminal' | 'analyze-disk'
 
 export interface GitRepoInfo {
   branch: string
   root: Path
+}
+
+export interface DiskUsageItem {
+  name: string
+  path: Path
+  size: number
+  kind: 'file' | 'dir'
+  extension: string
+  itemCount?: number
+  children?: DiskUsageItem[]
+}
+
+export interface DiskAnalysisResult {
+  rootPath: Path
+  totalSize: number
+  totalFiles: number
+  totalFolders: number
+  categories: Record<string, { size: number; count: number; color: string; label: string }>
+  topFiles: Array<{ name: string; path: Path; size: number; extension: string }>
+  tree: DiskUsageItem
+}
+
+export interface TerminalExecResult {
+  stdout: string
+  stderr: string
+  code: number
+  cwd: string
 }
 
 export interface KhojAPI {
@@ -133,6 +161,7 @@ export interface KhojAPI {
     readPreview(p: Path): Promise<PreviewData>
     computeHash(p: Path, algo?: 'sha256' | 'md5'): Promise<string>
     gitInfo(dir: Path): Promise<GitRepoInfo | null>
+    analyzeDisk(target: Path): Promise<DiskAnalysisResult>
     mkdir(parent: Path, name: string): Promise<Path>
     createSymlink(target: Path, linkPath: Path): Promise<Path>
     rename(p: Path, newName: string): Promise<Path>
@@ -196,6 +225,12 @@ export interface KhojAPI {
   settings: {
     get<T>(key: string): Promise<T | undefined>
     set<T>(key: string, value: T): Promise<void>
+  }
+  terminal: {
+    exec(cmd: string, cwd?: string): Promise<TerminalExecResult>
+    setCwd(cwd: string): Promise<string>
+    getCwd(): Promise<string>
+    getDefaultShell(): Promise<string>
   }
 }
 
