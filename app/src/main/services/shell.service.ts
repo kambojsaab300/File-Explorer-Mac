@@ -49,3 +49,16 @@ export async function copyPaths(paths: Path[], style: 'windows' | 'posix'): Prom
   const lines = paths.map((p) => (style === 'windows' ? `"${toDisplay(p, vols)}"` : p))
   clipboard.writeText(lines.join('\n'))
 }
+
+export async function share(paths: Path[]): Promise<void> {
+  if (!paths.length) return
+  if (process.platform === 'darwin') {
+    const electron = (await import('electron')) as unknown as { ShareMenu?: new (opts: { filePaths: string[] }) => { popup(): void } }
+    if (electron.ShareMenu) {
+      const menu = new electron.ShareMenu({ filePaths: paths.map((p) => normalize(p)) })
+      menu.popup()
+      return
+    }
+  }
+  await copyPaths(paths, 'windows')
+}

@@ -4,6 +4,31 @@ import { locOf, sortedItems, useStore } from './store'
 import { openEntry } from './components/MainArea'
 import { copy, copyAsPath, deleteSelected, newFolder, paste, showProperties, startRename, undo, useOps } from './actions'
 
+let typeBuffer = ''
+let typeTimeout: ReturnType<typeof setTimeout> | undefined
+
+function handleTypeToSelect(char: string): boolean {
+  clearTimeout(typeTimeout)
+  typeBuffer += char.toLowerCase()
+  typeTimeout = setTimeout(() => {
+    typeBuffer = ''
+  }, 800)
+
+  const s = useStore.getState()
+  const tab = s.tabs[s.active]
+  const items = sortedItems(tab)
+  const match = items.find((item) => item.name.toLowerCase().startsWith(typeBuffer))
+  if (match) {
+    s.select([match.path], match.path)
+    setTimeout(() => {
+      const el = document.querySelector('.it.sel')
+      el?.scrollIntoView({ block: 'nearest' })
+    }, 10)
+    return true
+  }
+  return false
+}
+
 // Windows shortcuts. Ctrl and ⌘ both work so Mac and Windows muscle memory are covered.
 export function useShortcuts(): void {
   useEffect(() => {
@@ -22,8 +47,27 @@ export function useShortcuts(): void {
       else if (e.altKey && e.key === '2') s.toggleSplitView()
       else if (e.key === 'F6' && s.splitView) s.setFocusedPane(s.focusedPane === 'left' ? 'right' : 'left')
       else if ((e.altKey && e.key === 'Enter') || (mod && key === 'i')) void showProperties()
+      else if (e.altKey && e.key === 'F4') api.window.close()
       else if (e.key === 'F5') s.refresh()
+      else if ((mod && (key === 'e' || key === 'f')) || e.key === 'F3') {
+        const inp = document.querySelector('.search input') as HTMLInputElement | null
+        inp?.focus()
+        inp?.select()
+      }
+      else if (mod && e.shiftKey && (key === '.' || e.code === 'Period')) s.setPref('hidden', !s.prefs.hidden)
+      else if (mod && !e.shiftKey && e.key >= '1' && e.key <= '8') {
+        const targetIdx = parseInt(e.key, 10) - 1
+        if (targetIdx < s.tabs.length) s.activate(targetIdx)
+      }
+      else if (mod && !e.shiftKey && e.key === '9') s.activate(s.tabs.length - 1)
+      else if (mod && e.shiftKey && e.key === '2') s.setView('large')
+      else if (mod && e.shiftKey && e.key === '3') s.setView('medium')
+      else if (mod && e.shiftKey && e.key === '5') s.setView('list')
+      else if (mod && e.shiftKey && e.key === '6') s.setView('details')
+      else if (mod && e.shiftKey && e.key === '7') s.setView('tiles')
+      else if (mod && e.shiftKey && e.key === '8') s.setView('content')
       else if (mod && key === 't') s.newTab()
+      else if (mod && !e.shiftKey && key === 'n') api.window.newWindow()
       else if (mod && key === 'w') s.closeTab(s.active)
       else if ((mod && key === 'l') || (e.altKey && key === 'd')) s.setAddressEditing(true)
       else if (e.ctrlKey && e.key === 'Tab') s.activate((s.active + (e.shiftKey ? -1 : 1) + s.tabs.length) % s.tabs.length)
@@ -55,6 +99,11 @@ export function useShortcuts(): void {
         const next =
           e.key === 'Home' ? 0 : e.key === 'End' ? order.length - 1 : Math.max(0, Math.min(order.length - 1, at + (e.key === 'ArrowDown' ? 1 : -1)))
         s.select([order[next]], order[next])
+      } else if (!mod && !e.altKey && e.key.length === 1 && /[a-z0-9._ -]/i.test(e.key)) {
+        if (handleTypeToSelect(e.key)) {
+          e.preventDefault()
+          return
+        }
       } else return
 
       e.preventDefault()

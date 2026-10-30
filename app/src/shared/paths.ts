@@ -44,10 +44,11 @@ export function withoutExt(name: string): string {
 
 // Explorer naming: pasting into the same folder gives "a - Copy.txt", "a - Copy (2).txt";
 // "keep both" on a conflict gives "a (2).txt".
-export function variantName(name: string, style: 'copy' | 'number', n: number): string {
+export function variantName(name: string, style: 'copy' | 'number' | 'shortcut', n = 1): string {
   const ext = extOf(name)
   const base = ext ? name.slice(0, -(ext.length + 1)) : name
   const suffix = ext ? '.' + name.slice(-ext.length) : ''
+  if (style === 'shortcut') return `${base} - Shortcut${n > 1 ? ` (${n})` : ''}${suffix}`
   if (style === 'copy') return `${base} - Copy${n > 1 ? ` (${n})` : ''}${suffix}`
   return `${base} (${n + 1})${suffix}`
 }

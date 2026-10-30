@@ -22,6 +22,19 @@ export function openEntry(e: Entry, inNewTab = false): void {
   void api.shell.open(e.path)
 }
 
+export function EntryIcon({ entry, size = 16 }: { entry: Entry; size?: number }) {
+  const icon = iconOf(entry)
+  if (entry.kind !== 'symlink') return <Icon name={icon} size={size} />
+  return (
+    <div className="ico-wrap is-link" style={{ width: size, height: size, flex: 'none' }}>
+      <Icon name={icon} size={size} />
+      <span className="ico-badge">
+        <Icon name="u-link" size={Math.max(9, Math.floor(size * 0.35))} />
+      </span>
+    </div>
+  )
+}
+
 // Explorer selection rules: click selects one, Ctrl/⌘ toggles, Shift extends from the anchor.
 function useClickSelect(order: string[]) {
   const tab = useTab()
@@ -476,7 +489,7 @@ function FolderView() {
             {tab.view === 'content' ? (
               <>
                 <div className="a">
-                  <Icon name={iconOf(e)} size={size} />
+                  <EntryIcon entry={e} size={size} />
                   <div className="tx">
                     <Name entry={e} />
                     {e.kind !== 'dir' && (
@@ -499,7 +512,7 @@ function FolderView() {
               </>
             ) : tab.view === 'tiles' ? (
               <>
-                <Icon name={iconOf(e)} size={size} />
+                <EntryIcon entry={e} size={size} />
                 <div className="tx">
                   <Name entry={e} />
                   <span className="sub">{typeOf(e)}</span>
@@ -508,7 +521,7 @@ function FolderView() {
               </>
             ) : (
               <>
-                <Icon name={iconOf(e)} size={size} />
+                <EntryIcon entry={e} size={size} />
                 <Name entry={e} />
               </>
             )}
@@ -557,7 +570,7 @@ function DetailsList(props: { items: Entry[]; itemProps: (e: Entry) => object; b
           return (
             <div key={e.path} {...itemProps(e)} style={{ position: 'absolute', top: r.start, left: 6, right: 6 }}>
               <div>
-                <Icon name={iconOf(e)} />
+                <EntryIcon entry={e} />
                 <Name entry={e} />
               </div>
               <div>{fmtDate(e.mtimeMs)}</div>

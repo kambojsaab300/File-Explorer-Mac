@@ -113,10 +113,15 @@ export interface FileProperties {
 
 // Commands the native macOS menu bar sends to the focused window.
 export type MenuCommand =
-  | 'new-tab' | 'close-tab' | 'new-folder' | 'new-file' | 'rename' | 'trash' | 'undo'
+  | 'new-tab' | 'new-window' | 'close-tab' | 'new-folder' | 'new-file' | 'rename' | 'trash' | 'undo'
   | 'cut' | 'copy' | 'paste' | 'select-all' | 'copy-path' | 'refresh' | 'back' | 'forward' | 'up'
   | 'go-home' | 'go-thispc' | 'go-downloads' | 'focus-address' | 'details-pane' | 'options'
   | 'view-details' | 'view-large' | 'view-list' | 'view-tiles' | 'view-content'
+
+export interface GitRepoInfo {
+  branch: string
+  root: Path
+}
 
 export interface KhojAPI {
   platform: NodeJS.Platform
@@ -127,7 +132,9 @@ export interface KhojAPI {
     setAttributes(p: Path, attrs: { hidden?: boolean; readonly?: boolean }): Promise<void>
     readPreview(p: Path): Promise<PreviewData>
     computeHash(p: Path, algo?: 'sha256' | 'md5'): Promise<string>
+    gitInfo(dir: Path): Promise<GitRepoInfo | null>
     mkdir(parent: Path, name: string): Promise<Path>
+    createSymlink(target: Path, linkPath: Path): Promise<Path>
     rename(p: Path, newName: string): Promise<Path>
     resolveInput(text: string): Promise<Path | SpecialLocation | null>
     places(): Promise<Places>
@@ -173,11 +180,13 @@ export interface KhojAPI {
     openWith(p: Path): Promise<void>
     reveal(p: Path): void
     openTerminal(dir: Path): void
+    share(paths: Path[]): void
     copyPaths(paths: Path[], style: 'windows' | 'posix'): void
     startDrag(paths: Path[]): void
     pathForFile(file: File): string
   }
   window: {
+    newWindow(): void
     minimize(): void
     toggleMaximize(): void
     close(): void

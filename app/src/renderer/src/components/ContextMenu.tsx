@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { api } from '@/api/client'
 import {
-  compressSelected, copy, copyAsPath, currentDir, deleteSelected, newFolder, newTextFile,
-  openExtractDialog, openInTerminal, paste, revealSelected, selectedEntries, showProperties,
+  compressSelected, copy, copyAsPath, createShortcut, currentDir, deleteSelected, newFolder, newTextFile,
+  openExtractDialog, openInTerminal, paste, revealSelected, selectedEntries, shareSelected, showProperties,
   startRename, undo, useOps
 } from '@/actions'
 import { useStore } from '@/store'
@@ -39,7 +39,10 @@ function itemMenu(): { row: Item[]; list: (Item | '-')[] } {
     ],
     list: [
       { label: 'Open', icon: 'u-open-with', accel: 'Enter', disabled: !one, run: () => one && openEntry(one) },
-      ...(one?.kind === 'dir' ? [{ label: 'Open in new tab', icon: 'u-tab-new', run: () => openEntry(one, true) }] : []),
+      ...(one?.kind === 'dir' ? [
+        { label: 'Open in new tab', icon: 'u-tab-new', run: () => openEntry(one, true) },
+        { label: 'Open in new window', icon: 'u-tab-new', run: () => api.window.newWindow() }
+      ] : []),
       ...(isPackage ? [{ label: 'Show package contents', icon: 'u-folder', run: () => useStore.getState().go(one!.path) }] : []),
       ...(one?.kind === 'file' ? [{ label: 'Quick Look', icon: 'u-quicklook', accel: 'Space', run: () => api.window.quickLook(one.path) }] : []),
       ...(one ? [{ label: 'Open with...', icon: 'u-open-with', run: () => void api.shell.openWith(one.path) }] : []),
@@ -54,6 +57,8 @@ function itemMenu(): { row: Item[]; list: (Item | '-')[] } {
         : []),
       ...(isZip ? [{ label: 'Extract All...', icon: 'u-extract', run: () => openExtractDialog(one?.path) }] : []),
       { label: 'Compress to ZIP file', icon: 'u-zip', run: () => void compressSelected() },
+      ...(one && currentDir() ? [{ label: 'Create shortcut', icon: 'u-link', run: () => void createShortcut() }] : []),
+      ...(sel.length > 0 ? [{ label: 'Share', icon: 'u-share', run: shareSelected }] : []),
       '-',
       ...(one?.kind === 'dir' && clipboard ? [{ label: 'Paste into folder', icon: 'u-paste', run: () => void paste(one.path) }] : []),
       { label: 'Copy as path', icon: 'u-link', accel: 'Ctrl+Shift+C', run: copyAsPath },
@@ -69,6 +74,7 @@ function backgroundMenu(): (Item | '-')[] {
   const { clipboard, undoStack } = useOps.getState()
   const canWrite = !!currentDir()
   return [
+    { label: 'New window', icon: 'u-tab-new', accel: `${mod}N`, run: () => api.window.newWindow() },
     { label: 'Refresh', icon: 'u-refresh', accel: 'F5', run: () => useStore.getState().refresh() },
     '-',
     { label: 'Paste', icon: 'u-paste', accel: `${mod}V`, disabled: !clipboard || !canWrite, run: () => void paste() },

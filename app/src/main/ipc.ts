@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain, shell, type WebContents } from 'electron'
+import { createMainWindow } from './window'
 import * as clipboard from './services/clipboard.service'
 import * as watch from './services/watch.service'
 import { randomUUID } from 'node:crypto'
@@ -43,6 +44,9 @@ const CHOICES = new Set(['replace', 'skip', 'keep-both', 'cancel'])
 export function registerIpc(): void {
   const fromSender = (e: Electron.IpcMainEvent): BrowserWindow | null => BrowserWindow.fromWebContents(e.sender)
 
+  ipcMain.on('window:new', () => {
+    createMainWindow({ macButtons: getSetting<boolean>('macButtons') ?? false })
+  })
   ipcMain.on('window:minimize', (e) => fromSender(e)?.minimize())
   ipcMain.on('window:close', (e) => fromSender(e)?.close())
   ipcMain.on('window:toggle-maximize', (e) => {
@@ -64,7 +68,9 @@ export function registerIpc(): void {
   ipcMain.handle('fs:set-attributes', (_, p, attrs) => fsService.setAttributes(path(p), attrs ?? {}))
   ipcMain.handle('fs:read-preview', (_, p) => fsService.readPreview(path(p)))
   ipcMain.handle('fs:hash', (_, p, algo) => fsService.computeHash(path(p), algo === 'md5' ? 'md5' : 'sha256'))
+  ipcMain.handle('fs:git-info', (_, dir) => fsService.gitInfo(path(dir)))
   ipcMain.handle('fs:mkdir', (_, parent, name) => fsService.mkdir(path(parent), fileName(name)))
+  ipcMain.handle('fs:create-symlink', (_, target, linkPath) => fsService.createSymlink(path(target), path(linkPath)))
   ipcMain.handle('fs:rename', (_, p, name) => fsService.rename(path(p), fileName(name)))
   ipcMain.handle('fs:resolve-input', (_, text) => fsService.resolveInput(String(text ?? '')))
   ipcMain.handle('fs:places', () => fsService.places())
@@ -79,6 +85,7 @@ export function registerIpc(): void {
 
   ipcMain.handle('shell:open', (_, p) => shellService.open(path(p)))
   ipcMain.handle('shell:open-with', (_, p) => shellService.openWith(path(p)))
+  ipcMain.on('shell:share', (_, list) => void shellService.share(paths(list)))
   ipcMain.on('shell:reveal', (_, p) => shellService.reveal(path(p)))
   ipcMain.on('shell:open-terminal', (_, p) => shellService.openTerminal(path(p)))
   ipcMain.on('shell:copy-paths', (_, list, style) => void shellService.copyPaths(paths(list), style === 'posix' ? 'posix' : 'windows'))

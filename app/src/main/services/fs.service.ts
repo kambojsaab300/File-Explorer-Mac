@@ -1,8 +1,8 @@
 import { app } from 'electron'
 import { createReadStream, type Dirent, type Stats } from 'node:fs'
-import { chmod, lstat, mkdir as mkdirFs, open as openFs, opendir, readFile, rename as renameFs, stat as statFs } from 'node:fs/promises'
+import { chmod, lstat, mkdir as mkdirFs, open as openFs, opendir, readFile, rename as renameFs, stat as statFs, symlink as symlinkFs } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
-import type { Entry, FileProperties, Path, PreviewData, SpecialLocation } from '@shared/types'
+import type { Entry, FileProperties, GitRepoInfo, Path, PreviewData, SpecialLocation } from '@shared/types'
 import { baseName, extOf, joinPath, parentOf, parseDisplay, toDisplay } from '@shared/paths'
 import { listVolumes } from './volumes.service'
 
@@ -160,9 +160,22 @@ export async function mkdir(parent: Path, name: string): Promise<Path> {
 }
 
 export async function rename(p: Path, newName: string): Promise<Path> {
-  const target = joinPath(parentOf(p) ?? '/', newName)
+  const parent = parentOf(p) ?? '/'
+  const target = joinPath(parent, newName)
+  const currentName = baseName(p)
+  if (currentName.toLowerCase() === newName.toLowerCase() && currentName !== newName) {
+    const tempTarget = joinPath(parent, `${newName}.khoj-tmp-${Date.now()}`)
+    await renameFs(p, tempTarget)
+    await renameFs(tempTarget, target)
+    return target
+  }
   await renameFs(p, target)
   return target
+}
+
+export async function createSymlink(target: Path, linkPath: Path): Promise<Path> {
+  await symlinkFs(target, linkPath)
+  return linkPath
 }
 
 export async function resolveInput(text: string): Promise<Path | SpecialLocation | null> {
@@ -283,4 +296,44 @@ export async function computeHash(p: Path, algo: 'sha256' | 'md5' = 'sha256'): P
     stream.on('end', () => resolve(hash.digest('hex')))
     stream.on('error', reject)
   })
+}
+
+export async function gitInfo(dir: Path): Promise<GitRepoInfo | null> {
+  let curr = dir
+  for (let i = 0; i < 6; i++) {
+    const gitDir = joinPath(curr, '.git')
+    try {
+      const st = await statFs(gitDir)
+      if (st.isDirectory()) {
+        const headContent = await readFile(joinPath(gitDir, 'HEAD'), 'utf8')
+        let branch = headContent.trim()
+        if (branch.startsWith('ref: refs/heads/')) {
+          branch = branch.slice(16).trim()
+        } else if (branch.length > 7) {
+          branch = branch.slice(0, 7)
+        }
+        return { branch, root: curr }
+      } else if (st.isFile()) {
+        const content = await readFile(gitDir, 'utf8')
+        const match = content.match(/gitdir:\s*(.+)/)
+        if (match) {
+          const resolvedGitDir = joinPath(curr, match[1].trim())
+          const headContent = await readFile(joinPath(resolvedGitDir, 'HEAD'), 'utf8')
+          let branch = headContent.trim()
+          if (branch.startsWith('ref: refs/heads/')) {
+            branch = branch.slice(16).trim()
+          } else if (branch.length > 7) {
+            branch = branch.slice(0, 7)
+          }
+          return { branch, root: curr }
+        }
+      }
+    } catch {
+      // not a git dir, continue up
+    }
+    const parent = parentOf(curr)
+    if (!parent || parent === curr) break
+    curr = parent
+  }
+  return null
 }

@@ -74,6 +74,8 @@ flowchart LR
 - Ctrl/⌘+click or middle-click a folder opens it in a new background tab.
 - On relaunch, all tabs and windows are restored (stored in settings).
 - The folder watcher refreshes the listing live (debounce 100 ms) and keeps the selection.
+- **Breadcrumb chevron flyouts**: clicking any chevron in the address bar displays a dropdown of sub-directories for direct navigation.
+- **Type-to-select**: typing letters in any file view immediately buffers input (800ms debounce) and scrolls/selects the matching file.
 
 ---
 
@@ -244,3 +246,9 @@ flowchart TD
 - Inside the Properties dialog (`Alt+Enter`), the **Checksums** tab calculates SHA-256 and MD5 streams using Node crypto.
 - One-click copy buttons copy hash digests to the clipboard.
 - "Verify hash" comparison field verifies pasted hashes and provides instant green/red match indicators.
+
+## Flow 13 — Breadcrumb Navigation, Shortcuts & Sharing
+- **Breadcrumb Chevron Flyouts**: clicking the chevron between breadcrumbs opens an instant dropdown of sub-directories without typing.
+- **Type-To-Select**: typing characters in folder views instantly buffers input (800ms window) and jumps selection to the first matching file/folder.
+- **Native macOS Sharing**: Command Bar "Share" and Context Menu "Share" invoke macOS native `ShareMenu` (AirDrop, Mail, Messages) or copies paths.
+- **Symlink Badges & Create Shortcut**: Symlinks display the Windows shortcut arrow badge overlay, and "Create shortcut" generates a target symlink.

@@ -1,4 +1,5 @@
 import type { MenuCommand } from '@shared/types'
+import { api } from './api/client'
 import { copy, copyAsPath, deleteSelected, newFolder, newTextFile, paste, startRename, undo } from './actions'
 import { sortedItems, useStore } from './store'
 
@@ -8,6 +9,7 @@ export function runMenuCommand(command: MenuCommand): void {
   const tab = s.tabs[s.active]
   const commands: Record<MenuCommand, () => void> = {
     'new-tab': () => s.newTab(),
+    'new-window': () => api.window.newWindow(),
     'close-tab': () => s.closeTab(s.active),
     'new-folder': () => void newFolder(),
     'new-file': () => void newTextFile(),

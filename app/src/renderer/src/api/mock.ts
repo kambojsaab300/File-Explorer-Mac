@@ -65,7 +65,9 @@ export const mockApi: KhojAPI = {
     setAttributes: async () => {},
     readPreview: async () => ({ kind: 'text', content: 'Mock preview content' }),
     computeHash: async () => 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    gitInfo: async () => ({ branch: 'main', root: HOME }),
     mkdir: async (parent, name) => joinPath(parent, name),
+    createSymlink: async (target, linkPath) => linkPath,
     rename: async (p, name) => joinPath(p.slice(0, p.lastIndexOf('/')) || '/', name),
     resolveInput: async (text) => {
       const p = parseDisplay(text, VOLUMES, HOME)
@@ -106,7 +108,7 @@ export const mockApi: KhojAPI = {
     onConflict: () => () => {}
   },
   volumes: { list: async () => sim(VOLUMES), eject: async () => note('eject')(), onChange: () => () => {} },
-  shell: { open: async () => note('open')(), openWith: async () => note('open with')(), reveal: note('reveal'), openTerminal: note('terminal'), copyPaths: note('copy as path'), startDrag: () => {}, pathForFile: () => '' },
-  window: { minimize: () => {}, toggleMaximize: () => {}, close: () => {}, quickLook: note('quick look'), onMaximized: () => () => {} },
+  shell: { open: async () => note('open')(), openWith: async () => note('open with')(), reveal: note('reveal'), openTerminal: note('terminal'), share: note('share'), copyPaths: note('copy as path'), startDrag: () => {}, pathForFile: () => '' },
+  window: { newWindow: () => {}, minimize: () => {}, toggleMaximize: () => {}, close: () => {}, quickLook: note('quick look'), onMaximized: () => () => {} },
   settings: { get: async () => undefined, set: async () => {} }
 }

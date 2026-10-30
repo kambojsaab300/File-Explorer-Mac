@@ -296,6 +296,31 @@ export function copyAsPath(): void {
   api.shell.copyPaths(paths.length ? paths : dir ? [dir] : [], 'windows')
 }
 
+export function shareSelected(): void {
+  const paths = selectedPaths().filter((p) => !isSpecial(p))
+  if (paths.length) api.shell.share(paths)
+}
+
+export async function createShortcut(): Promise<void> {
+  const sel = selectedPaths().filter((p) => !isSpecial(p))
+  const dir = currentDir()
+  if (sel.length !== 1 || !dir) return
+  const src = sel[0]
+  const name = baseName(src)
+  const ext = extOf(name)
+  const base = ext ? name.slice(0, -(ext.length + 1)) : name
+  const targetName = `${base} - Shortcut${ext ? '.' + ext : ''}`
+  try {
+    const to = `${dir}/${targetName}`
+    await api.fs.createSymlink(src, to)
+    pushUndo({ type: 'create', path: to })
+    refresh()
+    useStore.getState().select([to], to)
+  } catch (e) {
+    fail(e)
+  }
+}
+
 export function openInTerminal(): void {
   const sel = selectedEntries()
   const dir = sel.length === 1 && sel[0].kind === 'dir' ? sel[0].path : currentDir()

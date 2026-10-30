@@ -18,7 +18,9 @@ const api: KhojAPI = {
     setAttributes: (p, attrs) => ipcRenderer.invoke('fs:set-attributes', p, attrs),
     readPreview: (p) => ipcRenderer.invoke('fs:read-preview', p),
     computeHash: (p, algo) => ipcRenderer.invoke('fs:hash', p, algo),
+    gitInfo: (dir) => ipcRenderer.invoke('fs:git-info', dir),
     mkdir: (parent, name) => ipcRenderer.invoke('fs:mkdir', parent, name),
+    createSymlink: (target, linkPath) => ipcRenderer.invoke('fs:create-symlink', target, linkPath),
     rename: (p, name) => ipcRenderer.invoke('fs:rename', p, name),
     resolveInput: (text) => ipcRenderer.invoke('fs:resolve-input', text),
     places: () => ipcRenderer.invoke('fs:places'),
@@ -77,12 +79,14 @@ const api: KhojAPI = {
     openWith: (p) => ipcRenderer.invoke('shell:open-with', p),
     reveal: (p) => ipcRenderer.send('shell:reveal', p),
     openTerminal: (dir) => ipcRenderer.send('shell:open-terminal', dir),
+    share: (paths) => ipcRenderer.send('shell:share', paths),
     copyPaths: (paths, style) => ipcRenderer.send('shell:copy-paths', paths, style),
     startDrag: (paths) => ipcRenderer.send('shell:start-drag', paths),
     // File.path is gone in modern Electron; this is the supported way to get a dropped file's path.
     pathForFile: (file) => webUtils.getPathForFile(file).replace(/\\/g, '/')
   },
   window: {
+    newWindow: () => ipcRenderer.send('window:new'),
     minimize: () => ipcRenderer.send('window:minimize'),
     toggleMaximize: () => ipcRenderer.send('window:toggle-maximize'),
     close: () => ipcRenderer.send('window:close'),

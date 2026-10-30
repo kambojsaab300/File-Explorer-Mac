@@ -19,6 +19,7 @@ export function buildMenu(): void {
       label: 'File',
       submenu: [
         item('New Tab', 'new-tab', 'CmdOrCtrl+T'),
+        item('New Window', 'new-window', 'CmdOrCtrl+N'),
         item('New Folder', 'new-folder', 'CmdOrCtrl+Shift+N'),
         item('New Text Document', 'new-file'),
         { type: 'separator' },

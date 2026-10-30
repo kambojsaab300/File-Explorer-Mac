@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { compressSelected, copy, currentDir, deleteSelected, emptyTrash, paste, showProperties, startRename, useOps } from '@/actions'
+import { compressSelected, copy, currentDir, deleteSelected, emptyTrash, paste, shareSelected, showProperties, startRename, useOps } from '@/actions'
 import { locOf, useStore, type View } from '@/store'
 import { t } from '@/lib/i18n'
 import { Icon } from './Icon'
@@ -26,6 +26,7 @@ export function CommandBar() {
     ['u-copy', 'Copy', hasSel, () => copy()],
     ['u-paste', 'Paste', canWrite && !!clipboard, () => void paste()],
     ['u-rename', 'Rename', canWrite && tab.sel.length > 0, startRename],
+    ['u-share', 'Share', hasSel, shareSelected],
     ['u-delete', 'Delete', hasSel, () => void deleteSelected()]
   ]
 

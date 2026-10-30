@@ -1,3 +1,7 @@
+import { useEffect, useState } from 'react'
+import { isSpecial } from '@shared/paths'
+import type { GitRepoInfo } from '@shared/types'
+import { api } from '@/api/client'
 import { shortSize } from '@/lib/format'
 import { locOf, useStore, useTab, visibleEntries } from '@/store'
 import { Icon } from './Icon'
@@ -5,8 +9,27 @@ import { Icon } from './Icon'
 export function StatusBar() {
   const tab = useTab()
   const { volumes, setView } = useStore()
-  const count = locOf(tab) === 'thispc' ? volumes.length : visibleEntries(tab).length
+  const loc = locOf(tab)
+  const count = loc === 'thispc' ? volumes.length : visibleEntries(tab).length
   const selected = visibleEntries(tab).filter((e) => tab.sel.includes(e.path))
+  const [git, setGit] = useState<GitRepoInfo | null>(null)
+
+  useEffect(() => {
+    let canceled = false
+    if (isSpecial(loc)) {
+      setGit(null)
+      return
+    }
+    api.fs.gitInfo(loc).then((info) => {
+      if (!canceled) setGit(info)
+    }).catch(() => {
+      if (!canceled) setGit(null)
+    })
+    return () => {
+      canceled = true
+    }
+  }, [loc])
+
   // Explorer only shows a size when every selected item is a file.
   const size = selected.length && selected.every((e) => e.kind === 'file') ? shortSize(selected.reduce((s, e) => s + e.size, 0)) : ''
   const plural = (n: number): string => `${n} item${n === 1 ? '' : 's'}`
@@ -19,6 +42,19 @@ export function StatusBar() {
         <>
           <span>
             {plural(tab.sel.length)} selected{size && `  ${size}`}
+          </span>
+          <span className="bar" />
+        </>
+      )}
+      {git && (
+        <>
+          <span
+            className="git-branch"
+            title={`Git repository (${git.root})\nBranch: ${git.branch}`}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--c-accent)', fontWeight: 600, fontSize: 11 }}
+          >
+            <Icon name="u-tag" size={12} />
+            <span>{git.branch}</span>
           </span>
           <span className="bar" />
         </>

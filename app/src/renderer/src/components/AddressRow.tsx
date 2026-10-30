@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { isSpecial, toDisplay } from '@shared/paths'
 import { api } from '@/api/client'
-import { crumbsFor, locLabel } from '@/lib/locations'
+import { crumbsFor, driveIcon, driveLabel, locLabel } from '@/lib/locations'
+import { iconOf } from '@/lib/format'
 import { locOf, useStore, useTab } from '@/store'
 import { Icon } from './Icon'
 
@@ -68,6 +69,37 @@ export function AddressRow() {
 function Crumbs({ loc }: { loc: string }) {
   const { volumes, places, go, setAddressEditing } = useStore()
   const { root, segs } = crumbsFor(loc, volumes, places)
+  const [flyout, setFlyout] = useState<{ loc: string; items: { path: string; name: string; icon: string }[]; x: number; y: number } | null>(null)
+
+  const openChevron = async (e: React.MouseEvent, segLoc: string): Promise<void> => {
+    e.stopPropagation()
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    if (flyout?.loc === segLoc) {
+      setFlyout(null)
+      return
+    }
+
+    if (segLoc === 'thispc') {
+      const items = volumes.map((v) => ({ path: v.mount, name: driveLabel(v), icon: driveIcon(v) }))
+      setFlyout({ loc: segLoc, items, x: r.left, y: r.bottom + 4 })
+      return
+    }
+
+    if (!isSpecial(segLoc)) {
+      try {
+        const list = await api.fs.list(segLoc, { hidden: false })
+        const dirs = list
+          .filter((item) => item.kind === 'dir' || item.kind === 'package')
+          .map((item) => ({ path: item.path, name: item.name, icon: iconOf(item) }))
+        if (dirs.length) {
+          setFlyout({ loc: segLoc, items: dirs, x: r.left, y: r.bottom + 4 })
+        }
+      } catch {
+        // Unreadable
+      }
+    }
+  }
+
   return (
     <>
       <div className="crumbs">
@@ -76,9 +108,9 @@ function Crumbs({ loc }: { loc: string }) {
         </span>
         {segs.map((s) => (
           <span key={s.loc} className="crumb-group">
-            <span className="crumbchev">
+            <button className="crumbchev" title="Sub-folders" onClick={(e) => void openChevron(e, s.loc)}>
               <Icon name="u-chevron-right" size={12} />
-            </span>
+            </button>
             <button className="crumb" onClick={() => go(s.loc)}>
               {s.label}
             </button>
@@ -86,6 +118,29 @@ function Crumbs({ loc }: { loc: string }) {
         ))}
       </div>
       <div className="addr-fill" onClick={() => setAddressEditing(true)} />
+      {flyout && (
+        <div className="crumb-flyout-scrim" onClick={() => setFlyout(null)}>
+          <div
+            className="flyout crumb-flyout"
+            style={{ position: 'fixed', left: flyout.x, top: flyout.y, maxHeight: 320, overflow: 'auto', zIndex: 100 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {flyout.items.map((item) => (
+              <button
+                key={item.path}
+                className="mi"
+                onClick={() => {
+                  setFlyout(null)
+                  go(item.path)
+                }}
+              >
+                <Icon name={item.icon} size={16} />
+                <span>{item.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </>
   )
 }
