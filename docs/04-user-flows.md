@@ -252,3 +252,30 @@ flowchart TD
 - **Type-To-Select**: typing characters in folder views instantly buffers input (800ms window) and jumps selection to the first matching file/folder.
 - **Native macOS Sharing**: Command Bar "Share" and Context Menu "Share" invoke macOS native `ShareMenu` (AirDrop, Mail, Messages) or copies paths.
 - **Symlink Badges & Create Shortcut**: Symlinks display the Windows shortcut arrow badge overlay, and "Create shortcut" generates a target symlink.
+
+## Flow 14 — Embedded Terminal Drawer (Ctrl + ~)
+- **Collapsible Drawer**: Pressing `Ctrl + ~` (or `Cmd + ~` on macOS), clicking the "Terminal" button in the status bar, or selecting it from the Command Bar opens an integrated terminal drawer docked at the window bottom.
+- **Dynamic CWD Synchronization**: The terminal tracks current working directory, provides a one-click "Sync CWD" button to align terminal with the active Explorer folder, and intercepts `cd` commands to keep paths aligned.
+- **Terminal Capabilities**:
+  - ANSI color rendering for clean, syntax-highlighted git status, compiler output, and directory listings.
+  - Command history navigation (`Up` and `Down` arrows), `Ctrl+C` interrupt, and `Ctrl+L` clear.
+  - Quick action chips for instant execution (`git status`, `ls -la` / `dir`, `pwd`, `git log`).
+  - Resizable height via splitter drag handle.
+
+## Flow 15 — Disk Space Analyzer (WinDirStat / TreeSize View)
+- **Storage Diagnostics**: Accessible via "Analyze" pill on drive tiles in "This PC", folder context menus ("Analyze disk space"), or the status bar storage button.
+- **WinDirStat Treemap**:
+  - Interactive squarified treemap blocks sized proportionally to byte usage.
+  - Filetype color-coding: Video (Purple), Images (Green), Archives (Orange), Documents (Yellow), Audio (Cyan), Code & Dev (Indigo), System & Other (Gray).
+  - Hover tooltips with real-time size, path, and percentage metrics; double-click drills down into subfolders.
+- **TreeSize Table & Top Space Hogs**:
+  - Hierarchical breakdown table with proportional visual usage bars and item counts.
+  - Top 15 largest files table with one-click actions: "Reveal in Khoj", "Quick Look", and "Move to Trash".
+
+## Flow 16 — Advanced Dual-Pane Split View (Cross-Pane Transfer & Swap)
+- **Split View Bar**: Each pane displays its location label, pane badge (Pane 1 / Pane 2), and active focus state.
+- **F5 / F6 Cross-Pane Transfer**:
+  - Pressing `F5` with files selected in the active pane copies them directly to the other pane's destination folder.
+  - Pressing `F6` with files selected moves them to the other pane.
+  - Header action buttons `[ Copy to P2 (F5) ]` and `[ Move to P2 (F6) ]` provide visible, mouse-friendly controls.
+  - One-click `[ Swap ]` button swaps Pane 1 and Pane 2 locations instantaneously.

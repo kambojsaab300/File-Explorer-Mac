@@ -12,6 +12,7 @@ Estimates assume **1 full-time developer** who knows React/TypeScript, using thi
 | **4. Release** | 3–4 days | electron-builder universal DMG, notarization, DMG background, auto-update feed, crash-free smoke test on Intel + Apple Silicon | Notarized DMG installs on a clean Mac without warnings |
 | **v1.1** | 3–4 weeks | Home Recent/Favorites, Gallery thumbnails, Properties window, ZIP compress/extract, Spotlight search + filters, Network/SMB mapping, tab tear-off, tags | Completed |
 | **v2** | 2 weeks | Dual-pane / split view (Alt+2), Multi-mode batch rename with live preview (F2), Cryptographic checksums (SHA-256 & MD5 hash calculator with match verification), Rich preview pane (Alt+P) for code/images/audio/video, macOS package inspection, and Hindi localisation (हिंदी) | Completed |
+| **v2.2** | 1 week | Embedded Terminal Drawer (Ctrl+~), WinDirStat / TreeSize Disk Space Analyzer, Advanced Dual-Pane cross-pane transfer (F5/F6) and Swap Panes | Completed |
 
 **MVP total: ~6–7 weeks full-time.**
 
