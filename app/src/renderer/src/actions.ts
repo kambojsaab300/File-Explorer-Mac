@@ -2,7 +2,7 @@
 // dialogs they open. The explorer store (store.ts) stays focused on navigation.
 import { create } from 'zustand'
 import type { ConflictAnswer, ConflictRequest, Entry, FileProperties, OpProgress, OpResult, Path } from '@shared/types'
-import { baseName, isSpecial, parentOf, variantName, volumeOf, withoutExt } from '@shared/paths'
+import { baseName, extOf, isSpecial, parentOf, variantName, volumeOf, withoutExt } from '@shared/paths'
 import { api } from './api/client'
 import { locOf, useStore, visibleEntries } from './store'
 
@@ -23,6 +23,7 @@ interface OpsState {
   clipboard: { paths: Path[]; cut: boolean } | null
   undoStack: UndoRecord[]
   renaming: Path | null
+  batchRename: { paths: Path[] } | null
   progress: OpProgress | null
   conflict: { req: ConflictRequest; resolve: (a: ConflictAnswer) => void } | null
   confirm: { title: string; message: string; yes: string; onYes: () => void } | null
@@ -36,6 +37,7 @@ export const useOps = create<OpsState>(() => ({
   clipboard: null,
   undoStack: [],
   renaming: null,
+  batchRename: null,
   progress: null,
   conflict: null,
   confirm: null,
@@ -112,6 +114,53 @@ export const newTextFile = (): Promise<void> => createThen(api.ops.newFile, 'New
 export function startRename(): void {
   const sel = selectedPaths()
   if (sel.length === 1 && currentDir()) set({ renaming: sel[0] })
+  else if (sel.length > 1 && currentDir()) set({ batchRename: { paths: sel } })
+}
+
+export const closeBatchRename = (): void => set({ batchRename: null })
+
+export async function commitBatchRename(baseNamePattern: string): Promise<void> {
+  const s = useOps.getState()
+  if (!s.batchRename) return
+  const { paths } = s.batchRename
+  set({ batchRename: null })
+  const base = baseNamePattern.trim()
+  if (!base) return
+  if (INVALID.test(base)) return fail('A file name can’t contain any of the following characters: \\ / : * ? " < > |')
+
+  const moved: { from: Path; to: Path }[] = []
+  const newPaths: Path[] = []
+  try {
+    for (let i = 0; i < paths.length; i++) {
+      const p = paths[i]
+      const ext = extOf(baseName(p))
+      const extSuffix = ext ? `.${ext}` : ''
+      const targetName = `${base} (${i + 1})${extSuffix}`
+      const to = await api.fs.rename(p, targetName)
+      moved.push({ from: p, to })
+      newPaths.push(to)
+    }
+    pushUndo({ type: 'move', moved })
+    refresh()
+    useStore.getState().select(newPaths)
+  } catch (e) {
+    if (moved.length) pushUndo({ type: 'move', moved })
+    refresh()
+    fail(e)
+  }
+}
+
+export async function runBatchRename(renames: { from: Path; newName: string }[]): Promise<void> {
+  set({ batchRename: null })
+  try {
+    const moved = await api.ops.batchRename(renames)
+    if (moved.length) pushUndo({ type: 'move', moved })
+    refresh()
+    useStore.getState().select(moved.map((m) => m.to))
+  } catch (e) {
+    refresh()
+    fail(e)
+  }
 }
 
 const INVALID = /[\\/:*?"<>|]/

@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { api } from './api/client'
 import { locOf, sortedItems, useStore } from './store'
 import { openEntry } from './components/MainArea'
 import { copy, copyAsPath, deleteSelected, newFolder, paste, showProperties, startRename, undo, useOps } from './actions'
@@ -18,6 +19,8 @@ export function useShortcuts(): void {
       else if (e.altKey && e.key === 'ArrowUp') s.up()
       else if (e.altKey && e.shiftKey && key === 'p') s.toggleDetails()
       else if (e.altKey && key === 'p') s.togglePreview()
+      else if (e.altKey && e.key === '2') s.toggleSplitView()
+      else if (e.key === 'F6' && s.splitView) s.setFocusedPane(s.focusedPane === 'left' ? 'right' : 'left')
       else if ((e.altKey && e.key === 'Enter') || (mod && key === 'i')) void showProperties()
       else if (e.key === 'F5') s.refresh()
       else if (mod && key === 't') s.newTab()
@@ -40,6 +43,11 @@ export function useShortcuts(): void {
         const sel = tab.items.filter((x) => tab.sel.includes(x.path))
         if (sel.length === 1) openEntry(sel[0])
         else if (locOf(tab) === 'thispc' && tab.sel.length === 1) s.go(tab.sel[0])
+      } else if (e.code === 'Space') {
+        const sel = tab.items.filter((x) => tab.sel.includes(x.path))
+        if (sel.length === 1 && sel[0].kind === 'file') {
+          api.window.quickLook(sel[0].path)
+        }
       } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Home' || e.key === 'End') {
         const order = sortedItems(tab).map((x) => x.path)
         if (!order.length) return

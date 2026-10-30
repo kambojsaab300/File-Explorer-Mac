@@ -51,12 +51,19 @@ export function registerIpc(): void {
     if (win.isMaximized()) win.unmaximize()
     else win.maximize()
   })
+  ipcMain.on('window:quick-look', (e, p) => {
+    const win = fromSender(e)
+    if (win && process.platform === 'darwin') {
+      win.previewFile(path(p))
+    }
+  })
 
   ipcMain.handle('fs:list', (_, dir, opts) => fsService.list(path(dir), { hidden: !!opts?.hidden }))
   ipcMain.handle('fs:stat', (_, p) => fsService.stat(path(p)))
   ipcMain.handle('fs:properties', (_, p) => fsService.properties(path(p)))
   ipcMain.handle('fs:set-attributes', (_, p, attrs) => fsService.setAttributes(path(p), attrs ?? {}))
   ipcMain.handle('fs:read-preview', (_, p) => fsService.readPreview(path(p)))
+  ipcMain.handle('fs:hash', (_, p, algo) => fsService.computeHash(path(p), algo === 'md5' ? 'md5' : 'sha256'))
   ipcMain.handle('fs:mkdir', (_, parent, name) => fsService.mkdir(path(parent), fileName(name)))
   ipcMain.handle('fs:rename', (_, p, name) => fsService.rename(path(p), fileName(name)))
   ipcMain.handle('fs:resolve-input', (_, text) => fsService.resolveInput(String(text ?? '')))
@@ -71,6 +78,7 @@ export function registerIpc(): void {
   watchVolumes((vols) => BrowserWindow.getAllWindows().forEach((w) => w.webContents.send('volumes:changed', vols)))
 
   ipcMain.handle('shell:open', (_, p) => shellService.open(path(p)))
+  ipcMain.handle('shell:open-with', (_, p) => shellService.openWith(path(p)))
   ipcMain.on('shell:reveal', (_, p) => shellService.reveal(path(p)))
   ipcMain.on('shell:open-terminal', (_, p) => shellService.openTerminal(path(p)))
   ipcMain.on('shell:copy-paths', (_, list, style) => void shellService.copyPaths(paths(list), style === 'posix' ? 'posix' : 'windows'))
@@ -103,6 +111,13 @@ export function registerIpc(): void {
   ipcMain.handle('ops:new-file', (_, parent, name) => ops.newFile(path(parent), fileName(name)))
   ipcMain.handle('ops:compress', (_, list, target) => ops.compress(paths(list), target ? path(target) : undefined))
   ipcMain.handle('ops:extract', (_, p, target) => ops.extract(path(p), target ? path(target) : undefined))
+  ipcMain.handle('ops:batch-rename', (_, list) =>
+    ops.batchRename(
+      Array.isArray(list)
+        ? list.map((item: any) => ({ from: path(item.from), newName: fileName(item.newName) }))
+        : []
+    )
+  )
   ipcMain.handle('ops:empty-trash', () => ops.emptyTrash())
   ipcMain.on('ops:pause', (_, id) => ops.pause(String(id)))
   ipcMain.on('ops:resume', (_, id) => ops.resume(String(id)))

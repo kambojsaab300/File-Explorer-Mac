@@ -39,6 +39,7 @@ export function OptionsDialog() {
           )}
           <Toggle label="Show hidden items" on={prefs.hidden} onChange={(v) => setPref('hidden', v)} />
           <Toggle label="Show file name extensions" on={prefs.extensions} onChange={(v) => setPref('extensions', v)} />
+          <Toggle label="Compact view (reduces spacing)" on={!!prefs.compact} onChange={(v) => setPref('compact', v)} />
           <Toggle label="Show Preview pane (Alt+P)" on={prefs.previewPane} onChange={(v) => setPref('previewPane', v)} />
         </div>
         <div className="ft">

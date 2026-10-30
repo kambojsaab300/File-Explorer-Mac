@@ -1,3 +1,4 @@
+import { createContext, useContext } from 'react'
 import { create } from 'zustand'
 import type { Entry, Places, Volume } from '@shared/types'
 import { isSpecial, parentOf, volumeOf } from '@shared/paths'
@@ -29,6 +30,7 @@ export interface Prefs {
   macButtons: boolean
   hidden: boolean
   extensions: boolean
+  compact: boolean
   lang: 'en' | 'hi'
   previewPane: boolean
 }
@@ -38,6 +40,7 @@ const DEFAULT_PREFS: Prefs = {
   macButtons: false,
   hidden: false,
   extensions: true,
+  compact: false,
   lang: 'en',
   previewPane: false
 }
@@ -49,9 +52,13 @@ interface State {
   places: Places | null
   pinned: string[]
   detailsPane: boolean
+  activePane: 'details' | 'preview'
   addressEditing: boolean
   prefs: Prefs
   showOptions: boolean
+  splitView: boolean
+  splitActive: number
+  focusedPane: 'left' | 'right'
   init(): Promise<void>
   togglePin(path: string): void
   setPref<K extends keyof Prefs>(key: K, value: Prefs[K]): void
@@ -63,6 +70,9 @@ interface State {
   newTab(loc?: string): void
   closeTab(index: number): void
   activate(index: number): void
+  toggleSplitView(): void
+  setFocusedPane(pane: 'left' | 'right'): void
+  setSplitActive(index: number): void
   setView(v: View): void
   setSort(k: SortKey): void
   setSearch(q: string): void
@@ -92,7 +102,11 @@ export const useStore = create<State>((set, get) => {
   const patchTab = (id: number, patch: Partial<Tab>): void =>
     set((s) => ({ tabs: s.tabs.map((t) => (t.id === id ? { ...t, ...patch } : t)) }))
 
-  const current = (): Tab => get().tabs[get().active]
+  const current = (): Tab => {
+    const s = get()
+    const idx = s.splitView && s.focusedPane === 'right' ? s.splitActive : s.active
+    return s.tabs[idx] ?? s.tabs[0]
+  }
 
   async function load(tab: Tab): Promise<void> {
     const loc = locOf(tab)
@@ -124,9 +138,13 @@ export const useStore = create<State>((set, get) => {
     places: null,
     pinned: [],
     detailsPane: false,
+    activePane: 'details',
     addressEditing: false,
     prefs: DEFAULT_PREFS,
     showOptions: false,
+    splitView: false,
+    splitActive: 1,
+    focusedPane: 'left',
 
     async init() {
       const [volumes, places, saved, prefs, pinned] = await Promise.all([
@@ -189,16 +207,65 @@ export const useStore = create<State>((set, get) => {
 
     newTab(loc = 'home') {
       const t = makeTab(loc)
-      set((s) => ({ tabs: [...s.tabs, t], active: s.tabs.length }))
+      const s = get()
+      const nextIdx = s.tabs.length
+      if (s.splitView && s.focusedPane === 'right') {
+        set({ tabs: [...s.tabs, t], splitActive: nextIdx })
+      } else {
+        set({ tabs: [...s.tabs, t], active: nextIdx })
+      }
       void load(t)
     },
     closeTab(index) {
-      const { tabs, active } = get()
+      const { tabs, active, splitActive } = get()
       if (tabs.length === 1) return api.window.close()
       const rest = tabs.filter((_, i) => i !== index)
-      set({ tabs: rest, active: Math.min(index < active ? active - 1 : active, rest.length - 1) })
+      const newActive = Math.min(index < active ? active - 1 : active, rest.length - 1)
+      const newSplitActive = Math.min(index < splitActive ? splitActive - 1 : splitActive, rest.length - 1)
+      set({
+        tabs: rest,
+        active: newActive,
+        splitActive: newSplitActive,
+        splitView: rest.length > 1 ? get().splitView : false
+      })
     },
-    activate: (index) => set({ active: index, addressEditing: false }),
+    activate: (index) => {
+      const s = get()
+      if (s.splitView && s.focusedPane === 'right') {
+        set({ splitActive: index, addressEditing: false })
+      } else {
+        set({ active: index, addressEditing: false })
+      }
+    },
+    toggleSplitView() {
+      const s = get()
+      if (!s.splitView) {
+        if (s.tabs.length === 1) {
+          const t = makeTab(s.places?.documents ?? 'home')
+          set((prev) => ({
+            tabs: [...prev.tabs, t],
+            splitView: true,
+            splitActive: 1,
+            focusedPane: 'left'
+          }))
+          void load(t)
+        } else {
+          set({
+            splitView: true,
+            splitActive: s.active === 0 ? 1 : 0,
+            focusedPane: 'left'
+          })
+        }
+      } else {
+        set({ splitView: false })
+      }
+    },
+    setFocusedPane(pane) {
+      set({ focusedPane: pane })
+    },
+    setSplitActive(index) {
+      set({ splitActive: index })
+    },
 
     setView: (view) => patchTab(current().id, { view }),
     setSort(key) {
@@ -219,32 +286,48 @@ export const useStore = create<State>((set, get) => {
       }, 250)
     },
     select: (sel, anchor) => patchTab(current().id, { sel, ...(anchor !== undefined && { anchor }) }),
-    toggleDetails: () => set((s) => ({ detailsPane: !s.detailsPane })),
+    toggleDetails: () =>
+      set((s) => ({
+        detailsPane: s.detailsPane && s.activePane === 'details' ? false : true,
+        activePane: 'details'
+      })),
     togglePreview: () =>
       set((s) => ({
-        detailsPane: true,
-        prefs: { ...s.prefs, previewPane: !s.prefs.previewPane }
+        detailsPane: s.detailsPane && s.activePane === 'preview' ? false : true,
+        activePane: 'preview'
       })),
     setAddressEditing: (addressEditing) => set({ addressEditing })
   }
 })
 
-export const useTab = (): Tab => useStore((s) => s.tabs[s.active])
+export const TabContext = createContext<Tab | null>(null)
+
+export const useTab = (): Tab => {
+  const ctx = useContext(TabContext)
+  return (
+    ctx ??
+    useStore((s) => {
+      const idx = s.splitView && s.focusedPane === 'right' ? s.splitActive : s.active
+      return s.tabs[idx] ?? s.tabs[0]
+    })
+  )
+}
 
 // Remember open tabs across launches, and keep the folder on screen live.
 let unwatch: (() => void) | null = null
 let watched: string | null = null
 useStore.subscribe((s, prev) => {
-  if (s.tabs === prev.tabs && s.active === prev.active) return
+  if (s.tabs === prev.tabs && s.active === prev.active && s.splitActive === prev.splitActive && s.focusedPane === prev.focusedPane) return
   const locs = s.tabs.map(locOf)
   if (locs.join('\0') !== prev.tabs.map(locOf).join('\0')) void api.settings.set('openTabs', locs)
 
-  const loc = locOf(s.tabs[s.active])
+  const activeTab = s.splitView && s.focusedPane === 'right' ? s.tabs[s.splitActive] : s.tabs[s.active]
+  const loc = activeTab ? locOf(activeTab) : null
   if (loc === watched) return
   unwatch?.()
   unwatch = null
   watched = loc
-  if (!isSpecial(loc)) unwatch = api.fs.watch(loc, () => useStore.getState().refresh())
+  if (loc && !isSpecial(loc)) unwatch = api.fs.watch(loc, () => useStore.getState().refresh())
 })
 
 // Everything the user can currently select: search hits while searching, else the folder.

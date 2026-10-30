@@ -309,3 +309,37 @@ export async function emptyTrash(): Promise<void> {
     })
   }
 }
+
+export async function batchRename(renames: { from: Path; newName: string }[]): Promise<{ from: Path; to: Path }[]> {
+  const plan: { from: Path; to: Path; temp?: Path }[] = []
+  const results: { from: Path; to: Path }[] = []
+
+  for (const item of renames) {
+    const parent = parentOf(item.from) ?? '/'
+    const to = joinPath(parent, item.newName)
+    if (item.from === to) {
+      results.push({ from: item.from, to })
+      continue
+    }
+    plan.push({ from: item.from, to })
+  }
+
+  // To avoid overwriting in cycles (e.g. A -> B and B -> C), rename colliding targets to temp names first
+  const sourceSet = new Set(plan.map((p) => p.from))
+  for (const step of plan) {
+    if (sourceSet.has(step.to)) {
+      const temp = joinPath(parentOf(step.from) ?? '/', `__khoj_tmp_${randomUUID()}__`)
+      await rename(step.from, temp)
+      step.temp = temp
+    }
+  }
+
+  for (const step of plan) {
+    const src = step.temp ?? step.from
+    await rename(src, step.to)
+    results.push({ from: step.from, to: step.to })
+  }
+
+  return results
+}
+

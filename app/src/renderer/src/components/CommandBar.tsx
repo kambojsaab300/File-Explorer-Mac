@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { compressSelected, copy, currentDir, deleteSelected, emptyTrash, paste, showProperties, startRename, useOps } from '@/actions'
 import { locOf, useStore, type View } from '@/store'
+import { t } from '@/lib/i18n'
 import { Icon } from './Icon'
 
 const VIEWS: [View, string, string][] = [
@@ -13,7 +14,7 @@ const VIEWS: [View, string, string][] = [
 ]
 
 export function CommandBar() {
-  const { tabs, active, detailsPane, setView, setSort, toggleDetails } = useStore()
+  const { tabs, active, detailsPane, activePane, splitView, prefs, setPref, setView, setSort, toggleDetails, togglePreview, toggleSplitView } = useStore()
   const clipboard = useOps((s) => s.clipboard)
   const tab = tabs[active]
   const [menu, setMenu] = useState<'view' | 'sort' | 'more' | null>(null)
@@ -24,7 +25,7 @@ export function CommandBar() {
     ['u-cut', 'Cut', hasSel, () => copy(true)],
     ['u-copy', 'Copy', hasSel, () => copy()],
     ['u-paste', 'Paste', canWrite && !!clipboard, () => void paste()],
-    ['u-rename', 'Rename', canWrite && tab.sel.length === 1, startRename],
+    ['u-rename', 'Rename', canWrite && tab.sel.length > 0, startRename],
     ['u-delete', 'Delete', hasSel, () => void deleteSelected()]
   ]
 
@@ -92,6 +93,29 @@ export function CommandBar() {
                 {label}
               </button>
             ))}
+            <div style={{ height: 1, background: 'var(--c-divider-strong)', margin: '4px 0' }} />
+            <button className="mi" onClick={() => (togglePreview(), setMenu(null))}>
+              <span className="mi-check">{detailsPane && activePane === 'preview' && <Icon name="u-check" size={12} />}</span>
+              <Icon name="u-preview-pane" />
+              Preview pane
+            </button>
+            <button className="mi" onClick={() => (toggleDetails(), setMenu(null))}>
+              <span className="mi-check">{detailsPane && activePane === 'details' && <Icon name="u-check" size={12} />}</span>
+              <Icon name="u-details-pane" />
+              Details pane
+            </button>
+            <div style={{ height: 1, background: 'var(--c-divider-strong)', margin: '4px 0' }} />
+            <button className="mi" onClick={() => (toggleSplitView(), setMenu(null))}>
+              <span className="mi-check">{splitView && <Icon name="u-check" size={12} />}</span>
+              <Icon name="u-split" />
+              Split view (Dual pane)
+            </button>
+            <div style={{ height: 1, background: 'var(--c-divider-strong)', margin: '4px 0' }} />
+            <button className="mi" onClick={() => (setPref('compact', !prefs.compact), setMenu(null))}>
+              <span className="mi-check">{prefs.compact && <Icon name="u-check" size={12} />}</span>
+              <Icon name="u-list" />
+              Compact view
+            </button>
           </div>
         )}
       </div>
@@ -119,9 +143,29 @@ export function CommandBar() {
       </div>
 
       <span className="cmd-spacer" />
-      <button className={`cmd${detailsPane ? ' on' : ''}`} onClick={toggleDetails}>
+      <button
+        className={`cmd${detailsPane && activePane === 'preview' ? ' on' : ''}`}
+        title="Preview pane (Alt+P)"
+        onClick={togglePreview}
+      >
+        <Icon name="u-preview-pane" />
+        <span className="lbl">Preview</span>
+      </button>
+      <button
+        className={`cmd${detailsPane && activePane === 'details' ? ' on' : ''}`}
+        title="Details pane (Alt+Shift+P)"
+        onClick={toggleDetails}
+      >
         <Icon name="u-details-pane" />
         <span className="lbl">Details</span>
+      </button>
+      <button
+        className={`cmd${splitView ? ' on' : ''}`}
+        title="Split view (Dual pane, Alt+2)"
+        onClick={toggleSplitView}
+      >
+        <Icon name="u-split" />
+        <span className="lbl">{t('splitView', prefs.lang)}</span>
       </button>
     </div>
   )

@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { api } from '@/api/client'
 import {
   compressSelected, copy, copyAsPath, currentDir, deleteSelected, newFolder, newTextFile,
   openExtractDialog, openInTerminal, paste, revealSelected, selectedEntries, showProperties,
@@ -24,18 +25,24 @@ function itemMenu(): { row: Item[]; list: (Item | '-')[] } {
   const one = sel.length === 1 ? sel[0] : null
   const { clipboard } = useOps.getState()
   const isZip = !!one?.name.toLowerCase().endsWith('.zip')
+  const isPackage =
+    one?.kind === 'package' ||
+    (one && ['.app', '.bundle', '.framework', '.photoslibrary'].some((ext) => one.name.toLowerCase().endsWith(ext)))
 
   return {
     // Windows 11 puts the common verbs in an icon row at the top of the menu.
     row: [
       { label: 'Cut', icon: 'u-cut', run: () => copy(true) },
       { label: 'Copy', icon: 'u-copy', run: () => copy() },
-      { label: 'Rename', icon: 'u-rename', disabled: !one, run: startRename },
+      { label: 'Rename', icon: 'u-rename', disabled: sel.length === 0, run: startRename },
       { label: 'Delete', icon: 'u-delete', run: () => void deleteSelected() }
     ],
     list: [
       { label: 'Open', icon: 'u-open-with', accel: 'Enter', disabled: !one, run: () => one && openEntry(one) },
       ...(one?.kind === 'dir' ? [{ label: 'Open in new tab', icon: 'u-tab-new', run: () => openEntry(one, true) }] : []),
+      ...(isPackage ? [{ label: 'Show package contents', icon: 'u-folder', run: () => useStore.getState().go(one!.path) }] : []),
+      ...(one?.kind === 'file' ? [{ label: 'Quick Look', icon: 'u-quicklook', accel: 'Space', run: () => api.window.quickLook(one.path) }] : []),
+      ...(one ? [{ label: 'Open with...', icon: 'u-open-with', run: () => void api.shell.openWith(one.path) }] : []),
       ...(one?.kind === 'dir'
         ? [
             {

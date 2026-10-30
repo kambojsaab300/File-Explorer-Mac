@@ -39,7 +39,9 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     unpinFromQuickAccess: 'Unpin from Quick access',
     mapNetworkDrive: 'Map network drive...',
     language: 'Language',
-    networkLocations: 'Network locations'
+    networkLocations: 'Network locations',
+    splitView: 'Split view',
+    batchRename: 'Batch Rename'
   },
   hi: {
     home: 'होम',
@@ -79,7 +81,9 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     unpinFromQuickAccess: 'Quick access से हटाएं',
     mapNetworkDrive: 'नेटवर्क ड्राइव मैप करें...',
     language: 'भाषा (Language)',
-    networkLocations: 'नेटवर्क स्थान'
+    networkLocations: 'नेटवर्क स्थान',
+    splitView: 'स्प्लिट व्यू (दोहरा पैनल)',
+    batchRename: 'एक साथ नाम बदलें'
   }
 }
 

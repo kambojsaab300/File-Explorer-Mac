@@ -17,6 +17,7 @@ const api: KhojAPI = {
     properties: (p) => ipcRenderer.invoke('fs:properties', p),
     setAttributes: (p, attrs) => ipcRenderer.invoke('fs:set-attributes', p, attrs),
     readPreview: (p) => ipcRenderer.invoke('fs:read-preview', p),
+    computeHash: (p, algo) => ipcRenderer.invoke('fs:hash', p, algo),
     mkdir: (parent, name) => ipcRenderer.invoke('fs:mkdir', parent, name),
     rename: (p, name) => ipcRenderer.invoke('fs:rename', p, name),
     resolveInput: (text) => ipcRenderer.invoke('fs:resolve-input', text),
@@ -52,6 +53,7 @@ const api: KhojAPI = {
     newFile: (parent, name) => ipcRenderer.invoke('ops:new-file', parent, name),
     compress: (sources, destZip) => ipcRenderer.invoke('ops:compress', sources, destZip),
     extract: (zipPath, destDir) => ipcRenderer.invoke('ops:extract', zipPath, destDir),
+    batchRename: (renames) => ipcRenderer.invoke('ops:batch-rename', renames),
     emptyTrash: () => ipcRenderer.invoke('ops:empty-trash'),
     pause: (id) => ipcRenderer.send('ops:pause', id),
     resume: (id) => ipcRenderer.send('ops:resume', id),
@@ -72,6 +74,7 @@ const api: KhojAPI = {
   },
   shell: {
     open: (p) => ipcRenderer.invoke('shell:open', p),
+    openWith: (p) => ipcRenderer.invoke('shell:open-with', p),
     reveal: (p) => ipcRenderer.send('shell:reveal', p),
     openTerminal: (dir) => ipcRenderer.send('shell:open-terminal', dir),
     copyPaths: (paths, style) => ipcRenderer.send('shell:copy-paths', paths, style),
@@ -83,6 +86,7 @@ const api: KhojAPI = {
     minimize: () => ipcRenderer.send('window:minimize'),
     toggleMaximize: () => ipcRenderer.send('window:toggle-maximize'),
     close: () => ipcRenderer.send('window:close'),
+    quickLook: (p) => ipcRenderer.send('window:quick-look', p),
     onMaximized: (cb) => subscribe('window:maximized-changed', cb)
   },
   settings: {

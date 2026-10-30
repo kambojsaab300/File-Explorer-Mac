@@ -64,6 +64,7 @@ export const mockApi: KhojAPI = {
     },
     setAttributes: async () => {},
     readPreview: async () => ({ kind: 'text', content: 'Mock preview content' }),
+    computeHash: async () => 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
     mkdir: async (parent, name) => joinPath(parent, name),
     rename: async (p, name) => joinPath(p.slice(0, p.lastIndexOf('/')) || '/', name),
     resolveInput: async (text) => {
@@ -94,13 +95,18 @@ export const mockApi: KhojAPI = {
     newFile: async (parent, name) => joinPath(parent, name),
     compress: async (paths, dest) => dest ?? `${paths[0]}.zip`,
     extract: async (p, dest) => dest ?? p.replace(/\.zip$/, ''),
+    batchRename: async (renames) =>
+      renames.map((r) => ({
+        from: r.from,
+        to: joinPath(r.from.slice(0, r.from.lastIndexOf('/')) || '/', r.newName)
+      })),
     emptyTrash: async () => {},
     pause: () => {}, resume: () => {}, cancel: () => {},
     onProgress: () => () => {},
     onConflict: () => () => {}
   },
   volumes: { list: async () => sim(VOLUMES), eject: async () => note('eject')(), onChange: () => () => {} },
-  shell: { open: async () => note('open')(), reveal: note('reveal'), openTerminal: note('terminal'), copyPaths: note('copy as path'), startDrag: () => {}, pathForFile: () => '' },
-  window: { minimize: () => {}, toggleMaximize: () => {}, close: () => {}, onMaximized: () => () => {} },
+  shell: { open: async () => note('open')(), openWith: async () => note('open with')(), reveal: note('reveal'), openTerminal: note('terminal'), copyPaths: note('copy as path'), startDrag: () => {}, pathForFile: () => '' },
+  window: { minimize: () => {}, toggleMaximize: () => {}, close: () => {}, quickLook: note('quick look'), onMaximized: () => () => {} },
   settings: { get: async () => undefined, set: async () => {} }
 }

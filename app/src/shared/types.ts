@@ -31,9 +31,12 @@ export interface Volume {
 }
 
 export interface PreviewData {
-  kind: 'text' | 'image' | 'binary'
+  kind: 'text' | 'image' | 'audio' | 'video' | 'pdf' | 'binary'
   mime?: string
   content?: string
+  size?: number
+  lineCount?: number
+  truncated?: boolean
 }
 
 export interface OpProgress {
@@ -123,6 +126,7 @@ export interface KhojAPI {
     properties(p: Path): Promise<FileProperties>
     setAttributes(p: Path, attrs: { hidden?: boolean; readonly?: boolean }): Promise<void>
     readPreview(p: Path): Promise<PreviewData>
+    computeHash(p: Path, algo?: 'sha256' | 'md5'): Promise<string>
     mkdir(parent: Path, name: string): Promise<Path>
     rename(p: Path, newName: string): Promise<Path>
     resolveInput(text: string): Promise<Path | SpecialLocation | null>
@@ -151,6 +155,7 @@ export interface KhojAPI {
     newFile(parent: Path, name: string): Promise<Path>
     compress(sources: Path[], destZip?: Path): Promise<Path>
     extract(zipPath: Path, destDir?: Path): Promise<Path>
+    batchRename(renames: { from: Path; newName: string }[]): Promise<{ from: Path; to: Path }[]>
     emptyTrash(): Promise<void>
     pause(opId: string): void
     resume(opId: string): void
@@ -165,6 +170,7 @@ export interface KhojAPI {
   }
   shell: {
     open(p: Path): Promise<void>
+    openWith(p: Path): Promise<void>
     reveal(p: Path): void
     openTerminal(dir: Path): void
     copyPaths(paths: Path[], style: 'windows' | 'posix'): void
@@ -175,6 +181,7 @@ export interface KhojAPI {
     minimize(): void
     toggleMaximize(): void
     close(): void
+    quickLook(p: Path): void
     onMaximized(cb: (maximized: boolean) => void): Unsubscribe
   }
   settings: {

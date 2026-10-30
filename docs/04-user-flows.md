@@ -211,9 +211,36 @@ flowchart TD
 
 ## Flow 8 — Open & preview
 - Double-click / Enter → `shell.openPath` (default app). Folders navigate. `.app` launches.
+- **Show package contents** in context menu: lets users drill into macOS `.app`, `.bundle`, and `.photoslibrary` directories just like folders.
 - Space → native Quick Look panel (`win.previewFile`). Space again closes it, and arrow keys move the selection while it stays open.
-- Open with ▸ → list of apps that can open the type, plus "Choose another app…" (native picker).
+- **Open with…** → native application picker dialog allowing selection of any app in `/Applications`.
+- **Preview pane (Alt+P)**: togglable right-side pane with live file preview:
+  - Text & Code: line-numbered scrollable code viewer, character/line count, and one-click copy button.
+  - Images: centered high-res preview with image dimensions, format badge, and transparency checkerboard.
+  - Audio: waveform player with HTML5 `<audio>` controls.
+  - Video: inline video player with `<video>` controls.
+  - Binary & unsupported files: clean Windows 11 fallback card with file metadata and open button.
+- **Details pane (Alt+Shift+P)**: togglable metadata view showing properties, size, timestamps, and drive usage donut. Preview pane and Details pane toggle mutually exclusively on the right sidebar.
 
 ## Flow 9 — Settings sync & persistence
 - Stored in `~/Library/Application Support/Khoj/settings.json`: theme, window style, keyboard scheme, letters map, pinned folders, per-folder view state (keyed by path), tabs/windows to restore, nav width, details pane on/off.
 - Settings changes apply live, with no restart.
+
+## Flow 10 — Dual Pane / Split View (Alt+2)
+- Toggling Split View splits the explorer into two independent panes side-by-side with an active pane highlight.
+- Each pane displays its own folder path, breadcrumb history, and contents.
+- `F6` or clicking into a pane switches the active focus; global commands and keyboard shortcuts automatically act on the focused pane.
+- Seamless drag-and-drop between Pane 1 and Pane 2 simplifies multi-folder organization.
+
+## Flow 11 — Multi-Mode Batch Rename (F2)
+- Selecting multiple items and pressing `F2` (or clicking Rename in CommandBar / Context menu) opens the Batch Rename tool.
+- 3 distinct renaming modes:
+  1. **Sequential Numbering**: customizable base pattern, starting number, and format style (`(1)`, `- 01`, `- 001`).
+  2. **Find & Replace**: case-sensitive or insensitive text replacement across names.
+  3. **Prefix & Suffix**: add prefixes or suffixes to base filenames preserving extensions.
+- Includes a live before-and-after table preview and safe two-step intermediate temp renaming to prevent overwrite collisions on cycles.
+
+## Flow 12 — Cryptographic Checksums & Verification
+- Inside the Properties dialog (`Alt+Enter`), the **Checksums** tab calculates SHA-256 and MD5 streams using Node crypto.
+- One-click copy buttons copy hash digests to the clipboard.
+- "Verify hash" comparison field verifies pasted hashes and provides instant green/red match indicators.

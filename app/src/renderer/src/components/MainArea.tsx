@@ -4,8 +4,8 @@ import type { Entry } from '@shared/types'
 import { baseName, isSpecial, parentOf, toDisplay } from '@shared/paths'
 import { api } from '@/api/client'
 import { fmtDate, iconOf, kbSize, shortSize, typeOf } from '@/lib/format'
-import { driveIcon, driveLabel, knownFolders } from '@/lib/locations'
-import { locOf, sortedItems, useStore, useTab, type SortKey } from '@/store'
+import { driveIcon, driveLabel, knownFolders, locLabel } from '@/lib/locations'
+import { locOf, sortedItems, useStore, useTab, TabContext, type SortKey, type Tab } from '@/store'
 import { useOps } from '@/actions'
 import { dragSource, dropTarget } from '@/dnd'
 import { Icon } from './Icon'
@@ -39,8 +39,7 @@ function useClickSelect(order: string[]) {
   }
 }
 
-export function MainArea() {
-  const tab = useTab()
+function PaneContent({ tab }: { tab: Tab }) {
   const loc = locOf(tab)
 
   let body: React.ReactNode
@@ -56,6 +55,46 @@ export function MainArea() {
   return (
     <div className={`main v-${isSpecial(loc) ? 'page' : tab.view}`} tabIndex={-1}>
       {body}
+    </div>
+  )
+}
+
+function SinglePane({ tab, isActive, onFocus }: { tab: Tab; isActive: boolean; onFocus?: () => void }) {
+  return (
+    <TabContext.Provider value={tab}>
+      <div className={`pane-wrapper${isActive ? ' pane-active' : ''}`} onMouseDown={onFocus}>
+        <PaneContent tab={tab} />
+      </div>
+    </TabContext.Provider>
+  )
+}
+
+export function MainArea() {
+  const { tabs, active, splitView, splitActive, focusedPane, volumes, places, setFocusedPane } = useStore()
+  const leftTab = tabs[active] ?? tabs[0]
+  const rightTab = tabs[splitActive < tabs.length ? splitActive : active === 0 ? 1 : 0] ?? leftTab
+
+  if (!splitView) {
+    return <SinglePane tab={leftTab} isActive={true} />
+  }
+
+  return (
+    <div className="dual-pane-container">
+      <div className={`dual-pane-col${focusedPane === 'left' ? ' pane-focused' : ''}`}>
+        <div className="dual-pane-bar" onClick={() => setFocusedPane('left')}>
+          <span className="dual-pane-badge">Pane 1</span>
+          <span className="dual-pane-title">{locLabel(locOf(leftTab), volumes, places)}</span>
+        </div>
+        <SinglePane tab={leftTab} isActive={focusedPane === 'left'} onFocus={() => setFocusedPane('left')} />
+      </div>
+      <div className="splitter" />
+      <div className={`dual-pane-col${focusedPane === 'right' ? ' pane-focused' : ''}`}>
+        <div className="dual-pane-bar" onClick={() => setFocusedPane('right')}>
+          <span className="dual-pane-badge">Pane 2</span>
+          <span className="dual-pane-title">{locLabel(locOf(rightTab), volumes, places)}</span>
+        </div>
+        <SinglePane tab={rightTab} isActive={focusedPane === 'right'} onFocus={() => setFocusedPane('right')} />
+      </div>
     </div>
   )
 }

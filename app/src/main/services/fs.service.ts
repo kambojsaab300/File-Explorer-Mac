@@ -1,6 +1,7 @@
 import { app } from 'electron'
-import type { Dirent, Stats } from 'node:fs'
+import { createReadStream, type Dirent, type Stats } from 'node:fs'
 import { chmod, lstat, mkdir as mkdirFs, open as openFs, opendir, readFile, rename as renameFs, stat as statFs } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
 import type { Entry, FileProperties, Path, PreviewData, SpecialLocation } from '@shared/types'
 import { baseName, extOf, joinPath, parentOf, parseDisplay, toDisplay } from '@shared/paths'
 import { listVolumes } from './volumes.service'
@@ -186,40 +187,100 @@ export function places(): Record<string, Path> {
 
 export async function readPreview(p: Path): Promise<PreviewData> {
   const name = baseName(p)
-  const ext = extOf(name)
+  const ext = extOf(name).toLowerCase()
   const textExts = new Set([
-    'txt', 'md', 'json', 'ts', 'js', 'tsx', 'jsx', 'html', 'css',
-    'sh', 'py', 'yml', 'yaml', 'xml', 'log', 'ini', 'conf', 'env', 'sql'
+    'txt', 'md', 'markdown', 'json', 'ts', 'js', 'tsx', 'jsx', 'html', 'css',
+    'scss', 'less', 'sh', 'bash', 'zsh', 'py', 'yml', 'yaml', 'xml', 'log',
+    'ini', 'conf', 'env', 'sql', 'csv', 'c', 'cpp', 'h', 'hpp', 'java',
+    'rs', 'go', 'toml', 'lua', 'swift', 'kt', 'php', 'rb', 'bat', 'cmd',
+    'ps1', 'plist', 'rtf', 'diff', 'patch'
   ])
-  const imageExts = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'])
+  const imageExts = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'ico', 'bmp', 'avif'])
+  const audioExts = new Set(['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'])
+  const videoExts = new Set(['mp4', 'webm', 'mov', 'm4v', 'ogv'])
 
   try {
-    if (imageExts.has(ext)) {
+    const st = await statFs(p)
+    const size = st.size
+
+    if (imageExts.has(ext) && size <= 25 * 1024 * 1024) {
       const data = await readFile(p)
-      const mime = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`
+      const mime = ext === 'svg' ? 'image/svg+xml' : ext === 'jpg' ? 'image/jpeg' : `image/${ext}`
       return {
         kind: 'image',
         mime,
-        content: `data:${mime};base64,${data.toString('base64')}`
+        content: `data:${mime};base64,${data.toString('base64')}`,
+        size
+      }
+    }
+
+    if (audioExts.has(ext) && size <= 30 * 1024 * 1024) {
+      const data = await readFile(p)
+      const mime = ext === 'mp3' ? 'audio/mpeg' : ext === 'm4a' ? 'audio/mp4' : `audio/${ext}`
+      return {
+        kind: 'audio',
+        mime,
+        content: `data:${mime};base64,${data.toString('base64')}`,
+        size
+      }
+    }
+
+    if (videoExts.has(ext) && size <= 40 * 1024 * 1024) {
+      const data = await readFile(p)
+      const mime = ext === 'mov' ? 'video/quicktime' : `video/${ext}`
+      return {
+        kind: 'video',
+        mime,
+        content: `data:${mime};base64,${data.toString('base64')}`,
+        size
+      }
+    }
+
+    if (ext === 'pdf' && size <= 20 * 1024 * 1024) {
+      const data = await readFile(p)
+      return {
+        kind: 'pdf',
+        mime: 'application/pdf',
+        content: `data:application/pdf;base64,${data.toString('base64')}`,
+        size
       }
     }
 
     if (textExts.has(ext)) {
       const fh = await openFs(p, 'r')
       try {
-        const buf = Buffer.alloc(16 * 1024)
+        const maxRead = 64 * 1024
+        const buf = Buffer.alloc(Math.min(size, maxRead))
         const { bytesRead } = await fh.read(buf, 0, buf.length, 0)
+        const text = buf.subarray(0, bytesRead).toString('utf8')
+        const lines = text.split('\n')
         return {
           kind: 'text',
-          content: buf.subarray(0, bytesRead).toString('utf8')
+          mime: 'text/plain',
+          content: text,
+          lineCount: lines.length,
+          truncated: size > bytesRead,
+          size
         }
       } finally {
         await fh.close()
       }
     }
+
+    return { kind: 'binary', size }
   } catch {
     // Unreadable
   }
 
   return { kind: 'binary' }
+}
+
+export async function computeHash(p: Path, algo: 'sha256' | 'md5' = 'sha256'): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const hash = createHash(algo)
+    const stream = createReadStream(p)
+    stream.on('data', (chunk) => hash.update(chunk))
+    stream.on('end', () => resolve(hash.digest('hex')))
+    stream.on('error', reject)
+  })
 }

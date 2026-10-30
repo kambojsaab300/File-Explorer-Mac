@@ -1,19 +1,20 @@
 import { useEffect, useState } from 'react'
 import type { Entry, FileProperties } from '@shared/types'
-import { baseName, parentOf } from '@shared/paths'
+import { baseName, extOf, parentOf, withoutExt } from '@shared/paths'
 import { api } from '@/api/client'
-import { closeExtractDialog, closeProperties, runExtract, useOps } from '@/actions'
+import { closeBatchRename, closeExtractDialog, closeProperties, commitBatchRename, runBatchRename, runExtract, useOps } from '@/actions'
 import { fmtDate, iconOf, shortSize, typeOf } from '@/lib/format'
 import { useStore } from '@/store'
 import { Icon } from './Icon'
 
 export function Dialogs() {
-  const { progress, conflict, confirm, error, properties, extracting } = useOps()
+  const { progress, conflict, confirm, error, properties, extracting, batchRename } = useOps()
   if (conflict) return <ConflictDialog />
   if (confirm) return <ConfirmDialog />
   if (error) return <ErrorDialog message={error} />
   if (properties) return <PropertiesDialog props={properties} />
   if (extracting) return <ExtractDialog extracting={extracting} />
+  if (batchRename) return <BatchRenameDialog />
   if (progress) return <ProgressDialog />
   return null
 }
@@ -159,11 +160,39 @@ function ErrorDialog({ message }: { message: string }) {
 }
 
 function PropertiesDialog({ props }: { props: FileProperties }) {
-  const [tab, setTab] = useState<'general' | 'details' | 'security'>('general')
+  const [tab, setTab] = useState<'general' | 'details' | 'security' | 'checksums'>('general')
   const [name, setName] = useState(props.name)
   const [readonly, setReadonly] = useState(props.readonly)
   const [hidden, setHidden] = useState(props.hidden)
   const [applying, setApplying] = useState(false)
+  const [sha256, setSha256] = useState<string | null>(null)
+  const [md5, setMd5] = useState<string | null>(null)
+  const [hashing, setHashing] = useState(false)
+  const [copiedKey, setCopiedKey] = useState<string | null>(null)
+  const [verifyText, setVerifyText] = useState('')
+
+  const calcHashes = async () => {
+    if (props.kind !== 'file' || hashing) return
+    setHashing(true)
+    try {
+      const [s, m] = await Promise.all([
+        api.fs.computeHash(props.path, 'sha256'),
+        api.fs.computeHash(props.path, 'md5')
+      ])
+      setSha256(s)
+      setMd5(m)
+    } catch (err) {
+      console.error('Hash calculation failed', err)
+    } finally {
+      setHashing(false)
+    }
+  }
+
+  const copyToClipboard = (val: string, key: string) => {
+    navigator.clipboard.writeText(val)
+    setCopiedKey(key)
+    setTimeout(() => setCopiedKey(null), 2000)
+  }
 
   const fakeEntry: Entry = {
     name: props.name,
@@ -217,7 +246,7 @@ function PropertiesDialog({ props }: { props: FileProperties }) {
       }
     >
       <div style={{ display: 'flex', borderBottom: '1px solid var(--c-divider)', marginBottom: 16 }}>
-        {(['general', 'details', 'security'] as const).map((t) => (
+        {(['general', 'details', 'security', 'checksums'] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -383,6 +412,141 @@ function PropertiesDialog({ props }: { props: FileProperties }) {
           </div>
         </div>
       )}
+
+      {tab === 'checksums' && (
+        <div style={{ fontSize: 13 }}>
+          {props.kind !== 'file' ? (
+            <div className="muted" style={{ padding: '16px 0' }}>
+              Cryptographic checksums are only calculated for individual files.
+            </div>
+          ) : (
+            <div>
+              <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="muted">Cryptographic File Checksums (Hashes):</span>
+                <button
+                  className="btn"
+                  onClick={calcHashes}
+                  disabled={hashing}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '4px 10px' }}
+                >
+                  <Icon name={hashing ? 'u-refresh' : 'u-check'} size={14} className={hashing ? 'spin' : ''} />
+                  {hashing ? 'Calculating...' : sha256 ? 'Recalculate' : 'Calculate Hashes'}
+                </button>
+              </div>
+
+              {hashing && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '20px 0', justifyContent: 'center' }}>
+                  <Icon name="u-refresh" size={18} className="spin" />
+                  <span>Computing SHA-256 and MD5 streams...</span>
+                </div>
+              )}
+
+              {!hashing && !sha256 && (
+                <div style={{ padding: '24px 12px', textAlign: 'center', border: '1px dashed var(--c-overlay-border)', borderRadius: 6, margin: '8px 0' }}>
+                  <div style={{ marginBottom: 8, opacity: 0.7 }}>Click &quot;Calculate Hashes&quot; to compute SHA-256 and MD5 for this file.</div>
+                  <button className="btn primary" onClick={calcHashes} style={{ fontSize: 12 }}>
+                    Calculate Hashes
+                  </button>
+                </div>
+              )}
+
+              {!hashing && sha256 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <span style={{ fontWeight: 600, fontSize: 12 }}>SHA-256</span>
+                      <button
+                        className="btn"
+                        onClick={() => copyToClipboard(sha256, 'sha256')}
+                        style={{ fontSize: 11, padding: '2px 8px' }}
+                      >
+                        {copiedKey === 'sha256' ? '✓ Copied' : 'Copy'}
+                      </button>
+                    </div>
+                    <div
+                      style={{
+                        padding: '6px 8px',
+                        background: 'var(--c-bg)',
+                        border: '1px solid var(--c-overlay-border)',
+                        borderRadius: 4,
+                        fontFamily: 'monospace',
+                        fontSize: 11,
+                        wordBreak: 'break-all',
+                        userSelect: 'all'
+                      }}
+                    >
+                      {sha256}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <span style={{ fontWeight: 600, fontSize: 12 }}>MD5</span>
+                      <button
+                        className="btn"
+                        onClick={() => copyToClipboard(md5 ?? '', 'md5')}
+                        style={{ fontSize: 11, padding: '2px 8px' }}
+                      >
+                        {copiedKey === 'md5' ? '✓ Copied' : 'Copy'}
+                      </button>
+                    </div>
+                    <div
+                      style={{
+                        padding: '6px 8px',
+                        background: 'var(--c-bg)',
+                        border: '1px solid var(--c-overlay-border)',
+                        borderRadius: 4,
+                        fontFamily: 'monospace',
+                        fontSize: 11,
+                        wordBreak: 'break-all',
+                        userSelect: 'all'
+                      }}
+                    >
+                      {md5}
+                    </div>
+                  </div>
+
+                  <div style={{ height: 1, background: 'var(--c-divider)', margin: '4px 0' }} />
+
+                  <div>
+                    <div style={{ fontSize: 12, marginBottom: 4 }} className="muted">
+                      Verify hash against expected value:
+                    </div>
+                    <input
+                      type="text"
+                      value={verifyText}
+                      onChange={(e) => setVerifyText(e.target.value)}
+                      placeholder="Paste expected hash to verify..."
+                      style={{
+                        width: '100%',
+                        height: 30,
+                        padding: '0 8px',
+                        borderRadius: 4,
+                        border: '1px solid var(--c-overlay-border)',
+                        background: 'var(--c-bg)',
+                        color: 'var(--c-text)',
+                        fontSize: 12,
+                        fontFamily: 'monospace'
+                      }}
+                    />
+                    {verifyText.trim() && (
+                      <div style={{ marginTop: 6, fontSize: 12 }}>
+                        {verifyText.trim().toLowerCase() === sha256?.toLowerCase() ? (
+                          <span style={{ color: '#107c41', fontWeight: 600 }}>✓ SHA-256 matched successfully!</span>
+                        ) : verifyText.trim().toLowerCase() === md5?.toLowerCase() ? (
+                          <span style={{ color: '#107c41', fontWeight: 600 }}>✓ MD5 matched successfully!</span>
+                        ) : (
+                          <span style={{ color: '#d83b01', fontWeight: 600 }}>✗ Hash does not match.</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </Dialog>
   )
 }
@@ -437,6 +601,272 @@ function ExtractDialog({ extracting }: { extracting: { zipPath: string; destDir:
         />
         Show extracted files when complete
       </label>
+    </Dialog>
+  )
+}
+
+function BatchRenameDialog() {
+  const batch = useOps((s) => s.batchRename)
+  const paths = batch?.paths ?? []
+  const [mode, setMode] = useState<'pattern' | 'replace' | 'affix'>('pattern')
+
+  // Pattern mode state
+  const defaultBase = paths[0] ? withoutExt(baseName(paths[0])) : 'Item'
+  const [basePattern, setBasePattern] = useState(defaultBase)
+  const [startNum, setStartNum] = useState(1)
+  const [padDigits, setPadDigits] = useState<0 | 2 | 3>(0)
+
+  // Replace mode state
+  const [findText, setFindText] = useState('')
+  const [replaceText, setReplaceText] = useState('')
+  const [caseSensitive, setCaseSensitive] = useState(false)
+
+  // Affix mode state
+  const [prefix, setPrefix] = useState('')
+  const [suffix, setSuffix] = useState('')
+
+  if (!batch) return null
+
+  // Compute renames preview
+  const preview = paths.map((p, idx) => {
+    const orig = baseName(p)
+    const ext = extOf(orig)
+    const baseWithout = withoutExt(orig)
+    const extDot = ext ? `.${ext}` : ''
+    let newName = orig
+
+    if (mode === 'pattern') {
+      const num = startNum + idx
+      const numStr = padDigits > 0 ? String(num).padStart(padDigits, '0') : String(num)
+      const numFormatted = padDigits > 0 ? ` - ${numStr}` : ` (${numStr})`
+      newName = `${basePattern.trim() || 'Item'}${numFormatted}${extDot}`
+    } else if (mode === 'replace') {
+      if (findText) {
+        if (caseSensitive) {
+          newName = orig.split(findText).join(replaceText)
+        } else {
+          const re = new RegExp(findText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')
+          newName = orig.replace(re, replaceText)
+        }
+      }
+    } else if (mode === 'affix') {
+      newName = `${prefix}${baseWithout}${suffix}${extDot}`
+    }
+
+    return {
+      from: p,
+      orig,
+      newName,
+      changed: orig !== newName
+    }
+  })
+
+  const hasChanges = preview.some((r) => r.changed)
+  const canApply = hasChanges && preview.every((r) => r.newName.trim().length > 0 && !/[\\/:*?"<>|]/.test(r.newName))
+
+  return (
+    <Dialog
+      footer={
+        <>
+          <button
+            className="btn primary"
+            disabled={!canApply}
+            onClick={() => void runBatchRename(preview.map((r) => ({ from: r.from, newName: r.newName })))}
+          >
+            Rename ({preview.filter((r) => r.changed).length} items)
+          </button>
+          <button className="btn" onClick={closeBatchRename}>
+            Cancel
+          </button>
+        </>
+      }
+    >
+      <div style={{ minWidth: 480, maxWidth: 580 }}>
+        <h2 style={{ marginBottom: 4 }}>Batch Rename ({paths.length} items)</h2>
+        <div className="muted" style={{ fontSize: 13, marginBottom: 14 }}>
+          Rename multiple files with live preview, search &amp; replace, or numbering.
+        </div>
+
+        {/* Mode Selector Tabs */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 14, background: 'var(--c-bg-subtle, rgba(0,0,0,0.04))', padding: 3, borderRadius: 6 }}>
+          {[
+            { id: 'pattern', label: 'Sequential Numbering' },
+            { id: 'replace', label: 'Find & Replace' },
+            { id: 'affix', label: 'Prefix & Suffix' }
+          ].map((m) => (
+            <button
+              key={m.id}
+              onClick={() => setMode(m.id as any)}
+              style={{
+                flex: 1,
+                padding: '6px 10px',
+                borderRadius: 4,
+                border: 'none',
+                fontSize: 12,
+                cursor: 'pointer',
+                fontWeight: mode === m.id ? 600 : 400,
+                background: mode === m.id ? 'var(--c-bg)' : 'transparent',
+                color: mode === m.id ? 'var(--c-text)' : 'var(--c-text-2)',
+                boxShadow: mode === m.id ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+              }}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Mode Controls */}
+        {mode === 'pattern' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
+            <div>
+              <div style={{ fontSize: 12, marginBottom: 4 }} className="muted">Base Name:</div>
+              <input
+                type="text"
+                value={basePattern}
+                onChange={(e) => setBasePattern(e.target.value)}
+                style={{ width: '100%', height: 32, padding: '0 8px', borderRadius: 4, border: '1px solid var(--c-overlay-border)', background: 'var(--c-bg)', color: 'var(--c-text)', fontSize: 13 }}
+                placeholder="e.g. Vacation_Photo"
+                autoFocus
+              />
+            </div>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, marginBottom: 4 }} className="muted">Start Number:</div>
+                <input
+                  type="number"
+                  min="0"
+                  value={startNum}
+                  onChange={(e) => setStartNum(parseInt(e.target.value, 10) || 0)}
+                  style={{ width: '100%', height: 32, padding: '0 8px', borderRadius: 4, border: '1px solid var(--c-overlay-border)', background: 'var(--c-bg)', color: 'var(--c-text)', fontSize: 13 }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, marginBottom: 4 }} className="muted">Format:</div>
+                <select
+                  value={padDigits}
+                  onChange={(e) => setPadDigits(Number(e.target.value) as any)}
+                  style={{ width: '100%', height: 32, padding: '0 8px', borderRadius: 4, border: '1px solid var(--c-overlay-border)', background: 'var(--c-bg)', color: 'var(--c-text)', fontSize: 13 }}
+                >
+                  <option value={0}>Name (1), Name (2)...</option>
+                  <option value={2}>Name - 01, Name - 02...</option>
+                  <option value={3}>Name - 001, Name - 002...</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {mode === 'replace' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
+            <div>
+              <div style={{ fontSize: 12, marginBottom: 4 }} className="muted">Find:</div>
+              <input
+                type="text"
+                value={findText}
+                onChange={(e) => setFindText(e.target.value)}
+                style={{ width: '100%', height: 32, padding: '0 8px', borderRadius: 4, border: '1px solid var(--c-overlay-border)', background: 'var(--c-bg)', color: 'var(--c-text)', fontSize: 13 }}
+                placeholder="Text to find..."
+                autoFocus
+              />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, marginBottom: 4 }} className="muted">Replace with:</div>
+              <input
+                type="text"
+                value={replaceText}
+                onChange={(e) => setReplaceText(e.target.value)}
+                style={{ width: '100%', height: 32, padding: '0 8px', borderRadius: 4, border: '1px solid var(--c-overlay-border)', background: 'var(--c-bg)', color: 'var(--c-text)', fontSize: 13 }}
+                placeholder="Replacement text..."
+              />
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={caseSensitive}
+                onChange={(e) => setCaseSensitive(e.target.checked)}
+              />
+              Match case
+            </label>
+          </div>
+        )}
+
+        {mode === 'affix' && (
+          <div style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, marginBottom: 4 }} className="muted">Prefix:</div>
+              <input
+                type="text"
+                value={prefix}
+                onChange={(e) => setPrefix(e.target.value)}
+                style={{ width: '100%', height: 32, padding: '0 8px', borderRadius: 4, border: '1px solid var(--c-overlay-border)', background: 'var(--c-bg)', color: 'var(--c-text)', fontSize: 13 }}
+                placeholder="e.g. Draft_"
+                autoFocus
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, marginBottom: 4 }} className="muted">Suffix:</div>
+              <input
+                type="text"
+                value={suffix}
+                onChange={(e) => setSuffix(e.target.value)}
+                style={{ width: '100%', height: 32, padding: '0 8px', borderRadius: 4, border: '1px solid var(--c-overlay-border)', background: 'var(--c-bg)', color: 'var(--c-text)', fontSize: 13 }}
+                placeholder="e.g. _v2"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Live Preview List */}
+        <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
+          Live Preview:
+        </div>
+        <div
+          style={{
+            maxHeight: 180,
+            overflowY: 'auto',
+            border: '1px solid var(--c-overlay-border)',
+            borderRadius: 6,
+            background: 'var(--c-bg-subtle, rgba(0,0,0,0.02))'
+          }}
+        >
+          {preview.map((item, i) => (
+            <div
+              key={item.from}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                padding: '6px 10px',
+                fontSize: 12,
+                borderBottom: i < preview.length - 1 ? '1px solid var(--c-divider)' : 'none',
+                background: item.changed ? 'rgba(0, 120, 212, 0.05)' : 'transparent'
+              }}
+            >
+              <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.75 }}>
+                {item.orig}
+              </div>
+              <span style={{ margin: '0 8px', opacity: 0.5 }}>→</span>
+              <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: item.changed ? 600 : 400, color: item.changed ? 'var(--c-accent)' : 'inherit' }}>
+                {item.newName}
+              </div>
+              {item.changed && (
+                <span
+                  style={{
+                    marginLeft: 8,
+                    fontSize: 10,
+                    padding: '1px 6px',
+                    borderRadius: 3,
+                    background: 'var(--c-accent)',
+                    color: '#fff',
+                    fontWeight: 600
+                  }}
+                >
+                  NEW
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
     </Dialog>
   )
 }

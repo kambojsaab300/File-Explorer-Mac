@@ -10,6 +10,31 @@ export async function open(p: Path): Promise<void> {
   if (err) throw new Error(err)
 }
 
+export async function openWith(p: Path): Promise<void> {
+  const norm = normalize(p)
+  const { dialog } = await import('electron')
+  if (process.platform === 'darwin') {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: 'Choose Application',
+      defaultPath: '/Applications',
+      properties: ['openFile'],
+      filters: [{ name: 'Applications', extensions: ['app'] }]
+    })
+    if (!canceled && filePaths.length > 0) {
+      execFile('open', ['-a', filePaths[0], norm])
+    }
+  } else {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: 'Choose Program',
+      properties: ['openFile'],
+      filters: [{ name: 'Programs', extensions: ['exe'] }]
+    })
+    if (!canceled && filePaths.length > 0) {
+      spawn(filePaths[0], [norm], { detached: true })
+    }
+  }
+}
+
 export function reveal(p: Path): void {
   shell.showItemInFolder(normalize(p))
 }

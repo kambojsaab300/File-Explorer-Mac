@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from './api/client'
 import { initOps } from './actions'
 import { runMenuCommand } from './commands'
@@ -7,6 +7,7 @@ import { ContextMenu } from './components/ContextMenu'
 import { Dialogs } from './components/Dialogs'
 import { CommandBar } from './components/CommandBar'
 import { DetailsPane } from './components/DetailsPane'
+import { PreviewPane } from './components/PreviewPane'
 import { MainArea } from './components/MainArea'
 import { NavPane } from './components/NavPane'
 import { Onboarding, OptionsDialog } from './components/Settings'
@@ -35,25 +36,54 @@ function useTheme(): void {
 
 export function App() {
   const detailsPane = useStore((s) => s.detailsPane)
+  const activePane = useStore((s) => s.activePane)
   const showOptions = useStore((s) => s.showOptions)
+  const compact = useStore((s) => s.prefs.compact)
+  const [navW, setNavW] = useState(300)
+  const [draggingNav, setDraggingNav] = useState(false)
+
   useTheme()
   useShortcuts()
+
   useEffect(() => {
     void useStore.getState().init()
     initOps()
+    void api.settings.get<number>('navWidth').then((w) => {
+      if (w && w >= 160 && w <= 600) setNavW(w)
+    })
     return api.app.onMenu(runMenuCommand)
   }, [])
 
+  const startResizeNav = (e: React.MouseEvent): void => {
+    e.preventDefault()
+    setDraggingNav(true)
+    const startX = e.clientX
+    const startW = navW
+    const onMove = (ev: MouseEvent): void => {
+      const next = Math.max(160, Math.min(600, startW + (ev.clientX - startX)))
+      setNavW(next)
+    }
+    const onUp = (ev: MouseEvent): void => {
+      setDraggingNav(false)
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+      const finalW = Math.max(160, Math.min(600, startW + (ev.clientX - startX)))
+      void api.settings.set('navWidth', finalW)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
+
   return (
-    <div className="window">
+    <div className={`window${compact ? ' compact' : ''}`}>
       <TitleBar />
       <AddressRow />
       <CommandBar />
-      <div className="body">
+      <div className="body" style={{ '--nav-w': `${navW}px` } as React.CSSProperties}>
         <NavPane />
-        <div className="splitter" />
+        <div className={`splitter${draggingNav ? ' dragging' : ''}`} onMouseDown={startResizeNav} />
         <MainArea />
-        {detailsPane && <DetailsPane />}
+        {detailsPane && (activePane === 'preview' ? <PreviewPane /> : <DetailsPane />)}
       </div>
       <StatusBar />
       <ContextMenu />
