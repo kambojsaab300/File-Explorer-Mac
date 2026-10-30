@@ -1,10 +1,28 @@
 import { app } from 'electron'
 import { createReadStream, type Dirent, type Stats } from 'node:fs'
-import { chmod, lstat, mkdir as mkdirFs, open as openFs, opendir, readFile, rename as renameFs, stat as statFs, symlink as symlinkFs } from 'node:fs/promises'
+import { chmod, lstat, mkdir as mkdirFs, open as openFs, opendir, readdir, readFile, rename as renameFs, stat as statFs, symlink as symlinkFs } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import type { DiskAnalysisResult, DiskUsageItem, Entry, FileProperties, GitRepoInfo, Path, PreviewData, SpecialLocation } from '@shared/types'
 import { baseName, extOf, joinPath, parentOf, parseDisplay, toDisplay } from '@shared/paths'
 import { listVolumes } from './volumes.service'
+
+// High-speed in-memory directory listing cache
+interface CacheItem {
+  timestamp: number
+  entries: Entry[]
+}
+const listCache = new Map<string, CacheItem>()
+
+export function invalidateListCache(targetDir?: string): void {
+  if (targetDir) {
+    listCache.delete(targetDir)
+    for (const key of listCache.keys()) {
+      if (key.startsWith(targetDir)) listCache.delete(key)
+    }
+  } else {
+    listCache.clear()
+  }
+}
 
 // macOS shows these directories as single files.
 const PACKAGE_EXTS = new Set(['app', 'bundle', 'framework', 'photoslibrary', 'pages', 'numbers', 'key', 'rtfd', 'plugin', 'kext'])
@@ -29,37 +47,48 @@ function toEntry(path: Path, st: Stats): Entry {
   }
 }
 
-export async function list(dir: Path, opts: { hidden?: boolean } = {}): Promise<Entry[]> {
+export async function list(dir: Path, opts: { hidden?: boolean; refresh?: boolean } = {}): Promise<Entry[]> {
   const targetDir =
     dir === 'trash'
       ? process.platform === 'darwin'
         ? joinPath(places().home, '.Trash')
         : app.getPath('temp')
       : dir
-  const out: Entry[] = []
-  const batch: Promise<void>[] = []
-  const add = async (de: Dirent): Promise<void> => {
-    const path = joinPath(targetDir, de.name)
-    try {
-      let st = await lstat(path)
-      // Show symlinked folders as folders, the way Explorer shows junctions.
-      if (st.isSymbolicLink()) st = await statFs(path).catch(() => st)
-      out.push(toEntry(path, st))
-    } catch {
-      // Vanished or unreadable between readdir and stat; skip it.
+
+  const cacheKey = `${targetDir}:${opts.hidden ? '1' : '0'}`
+  if (!opts.refresh) {
+    const cached = listCache.get(cacheKey)
+    if (cached && Date.now() - cached.timestamp < 3000) {
+      return cached.entries
     }
+  } else {
+    invalidateListCache(targetDir)
   }
 
+  const out: Entry[] = []
   try {
-    for await (const de of await opendir(targetDir, { bufferSize: 256 })) {
-      if (!opts.hidden && de.name.startsWith('.')) continue
-      batch.push(add(de))
-      if (batch.length >= 64) await Promise.all(batch.splice(0))
+    const dirents = await readdir(targetDir, { withFileTypes: true })
+    const visible = opts.hidden ? dirents : dirents.filter((de) => !de.name.startsWith('.'))
+    const concurrency = 128
+    for (let i = 0; i < visible.length; i += concurrency) {
+      const chunk = visible.slice(i, i + concurrency)
+      await Promise.all(
+        chunk.map(async (de) => {
+          const path = joinPath(targetDir, de.name)
+          try {
+            let st = await lstat(path)
+            if (st.isSymbolicLink()) st = await statFs(path).catch(() => st)
+            out.push(toEntry(path, st))
+          } catch {
+            // Unreadable or vanished
+          }
+        })
+      )
     }
-    await Promise.all(batch)
   } catch {
     // Empty or unreadable
   }
+  listCache.set(cacheKey, { timestamp: Date.now(), entries: out })
   return out
 }
 
@@ -156,6 +185,7 @@ export async function setAttributes(p: Path, attrs: { hidden?: boolean; readonly
 export async function mkdir(parent: Path, name: string): Promise<Path> {
   const path = joinPath(parent, name)
   await mkdirFs(path)
+  invalidateListCache(parent)
   return path
 }
 
@@ -167,9 +197,11 @@ export async function rename(p: Path, newName: string): Promise<Path> {
     const tempTarget = joinPath(parent, `${newName}.khoj-tmp-${Date.now()}`)
     await renameFs(p, tempTarget)
     await renameFs(tempTarget, target)
+    invalidateListCache(parent)
     return target
   }
   await renameFs(p, target)
+  invalidateListCache(parent)
   return target
 }
 

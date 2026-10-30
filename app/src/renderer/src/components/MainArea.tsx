@@ -53,6 +53,7 @@ function useClickSelect(order: string[]) {
 }
 
 function PaneContent({ tab }: { tab: Tab }) {
+  const refreshing = useStore((s) => s.refreshing)
   const loc = locOf(tab)
 
   let body: React.ReactNode
@@ -66,7 +67,7 @@ function PaneContent({ tab }: { tab: Tab }) {
   else body = <FolderView />
 
   return (
-    <div className={`main v-${isSpecial(loc) ? 'page' : tab.view}`} tabIndex={-1}>
+    <div className={`main v-${isSpecial(loc) ? 'page' : tab.view}${refreshing ? ' is-refreshing' : ''}`} tabIndex={-1}>
       {body}
     </div>
   )
@@ -238,7 +239,7 @@ function ThisPC() {
 }
 
 function Home() {
-  const { places, volumes, go, pinned, selectTab } = useStore()
+  const { places, volumes, go, pinned, selectTab, refreshing } = useStore()
   const activeTab = useTab()
   const [tab, setTab] = useState<'recent' | 'favorites'>('recent')
   const [recents, setRecents] = useState<Entry[]>([])
@@ -267,7 +268,7 @@ function Home() {
     return () => {
       cancelled = true
     }
-  }, [places])
+  }, [places, refreshing])
 
   return (
     <div className="scroll">
@@ -368,7 +369,7 @@ function Home() {
 }
 
 function Gallery() {
-  const { places, selectTab } = useStore()
+  const { places, selectTab, refreshing } = useStore()
   const activeTab = useTab()
   const [images, setImages] = useState<Entry[]>([])
   const [loading, setLoading] = useState(true)
@@ -392,7 +393,7 @@ function Gallery() {
     return () => {
       cancelled = true
     }
-  }, [places?.pictures])
+  }, [places?.pictures, refreshing])
 
   const groups: Record<string, Entry[]> = {}
   for (const img of images) {
@@ -591,11 +592,21 @@ function FolderView() {
         if (!tab.sel.includes(e.path)) {
           selectTab(tab.id, [e.path], e.path)
         }
+      } else if (ev.button === 1) {
+        ev.preventDefault()
+        ev.stopPropagation()
+        openEntry(e, true)
       }
     },
     onClick: (ev: React.MouseEvent) => onClick(e.path, ev),
     onDoubleClick: () => openEntry(e),
-    onAuxClick: (ev: React.MouseEvent) => ev.button === 1 && openEntry(e, true),
+    onAuxClick: (ev: React.MouseEvent) => {
+      if (ev.button === 1) {
+        ev.preventDefault()
+        ev.stopPropagation()
+        openEntry(e, true)
+      }
+    },
     onContextMenu: (ev: React.MouseEvent) => {
       ev.preventDefault()
       ev.stopPropagation()
@@ -620,6 +631,11 @@ function FolderView() {
       e.preventDefault()
       selectTab(tab.id, [], null)
       openMenu(e, 'background')
+    },
+    onWheel: (e: React.WheelEvent<HTMLDivElement>) => {
+      if (tab.view === 'list' && e.deltaY) {
+        e.currentTarget.scrollLeft += e.deltaY
+      }
     },
     ...dropTarget(locOf(tab))
   }
@@ -703,6 +719,10 @@ function DetailsList(props: { items: Entry[]; itemProps: (e: Entry) => object; b
   const scrollRef = useRef<HTMLDivElement>(null)
   // Rows are virtualised so folders with tens of thousands of entries stay smooth.
   const rows = useVirtualizer({ count: items.length, getScrollElement: () => scrollRef.current, estimateSize: () => 32, overscan: 12 })
+
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = 0
+  }, [locOf(tab)])
 
   return (
     <div className="scroll" ref={scrollRef} {...backgroundProps}>

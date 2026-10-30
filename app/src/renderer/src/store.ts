@@ -62,6 +62,7 @@ interface State {
   terminalOpen: boolean
   terminalHeight: number
   diskAnalyzerTarget: string | null
+  refreshing: boolean
   init(): Promise<void>
   togglePin(path: string): void
   setPref<K extends keyof Prefs>(key: K, value: Prefs[K]): void
@@ -99,6 +100,9 @@ const makeTab = (loc: string): Tab => ({
 
 export const locOf = (t: Tab): string => t.hist[t.i]
 
+// Fast in-memory UI cache for instant zero-latency navigation
+export const clientFolderCache = new Map<string, Entry[]>()
+
 function friendlyError(e: unknown): Pick<Tab, 'error' | 'errorKind'> {
   const msg = String((e as Error)?.message ?? e)
   if (/EACCES|EPERM/.test(msg)) return { errorKind: 'permission', error: "You don't currently have permission to access this folder." }
@@ -116,12 +120,23 @@ export const useStore = create<State>((set, get) => {
     return s.tabs[idx] ?? s.tabs[0]
   }
 
-  async function load(tab: Tab): Promise<void> {
+  async function load(tab: Tab, isRefresh = false): Promise<void> {
     const loc = locOf(tab)
     if (isSpecial(loc)) return patchTab(tab.id, { items: [], status: 'ready' })
-    patchTab(tab.id, { status: 'loading' })
+    
+    if (isRefresh) {
+      clientFolderCache.delete(loc)
+    }
+
+    // Instant SWR: if cached, keep status ready while revalidating
+    const cached = isRefresh ? undefined : clientFolderCache.get(loc)
+    if (!cached) {
+      patchTab(tab.id, { items: [], status: 'loading' })
+    }
+
     try {
-      const items = await api.fs.list(loc, { hidden: get().prefs.hidden })
+      const items = await api.fs.list(loc, { hidden: get().prefs.hidden, refresh: isRefresh })
+      clientFolderCache.set(loc, items)
       // Ignore results that arrive after the user already navigated elsewhere.
       if (locOf(get().tabs.find((t) => t.id === tab.id) ?? tab) !== loc) return
       // Keep the selection on items that still exist (refreshes after file operations).
@@ -134,7 +149,19 @@ export const useStore = create<State>((set, get) => {
   }
 
   function moveTo(t: Tab, i: number, hist = t.hist): void {
-    const next = { ...t, hist, i, sel: [], anchor: null, search: '', results: null }
+    const nextLoc = hist[i]
+    const cached = isSpecial(nextLoc) ? [] : clientFolderCache.get(nextLoc)
+    const next = {
+      ...t,
+      hist,
+      i,
+      items: cached ?? [],
+      status: (cached ? 'ready' : 'loading') as Tab['status'],
+      sel: [],
+      anchor: null,
+      search: '',
+      results: null
+    }
     patchTab(t.id, next)
     void load(next)
   }
@@ -156,6 +183,7 @@ export const useStore = create<State>((set, get) => {
     terminalOpen: false,
     terminalHeight: 240,
     diskAnalyzerTarget: null,
+    refreshing: false,
 
     async init() {
       const [volumes, places, saved, prefs, pinned] = await Promise.all([
@@ -212,8 +240,13 @@ export const useStore = create<State>((set, get) => {
       get().go(vol && vol.mount === loc ? 'thispc' : (parentOf(loc) ?? 'thispc'))
     },
     refresh() {
-      void load(current())
+      set({ refreshing: true })
+      clientFolderCache.delete(locOf(current()))
+      void load(current(), true)
       void api.volumes.list().then((volumes) => set({ volumes }))
+      setTimeout(() => {
+        set({ refreshing: false })
+      }, 220)
     },
 
     newTab(loc = 'home') {

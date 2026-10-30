@@ -105,13 +105,26 @@ export function useShortcuts(): void {
         if (sel.length === 1 && sel[0].kind === 'file') {
           api.window.quickLook(sel[0].path)
         }
-      } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Home' || e.key === 'End') {
+      } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Home' || e.key === 'End' || e.key === 'PageDown' || e.key === 'PageUp') {
         const order = sortedItems(tab).map((x) => x.path)
         if (!order.length) return
         const at = order.indexOf(tab.sel[tab.sel.length - 1] ?? '')
+        const pageSize = 12
         const next =
-          e.key === 'Home' ? 0 : e.key === 'End' ? order.length - 1 : Math.max(0, Math.min(order.length - 1, at + (e.key === 'ArrowDown' ? 1 : -1)))
+          e.key === 'Home'
+            ? 0
+            : e.key === 'End'
+              ? order.length - 1
+              : e.key === 'PageDown'
+                ? Math.min(order.length - 1, at + pageSize)
+                : e.key === 'PageUp'
+                  ? Math.max(0, at - pageSize)
+                  : Math.max(0, Math.min(order.length - 1, at + (e.key === 'ArrowDown' ? 1 : -1)))
         s.select([order[next]], order[next])
+        setTimeout(() => {
+          const el = document.querySelector('.it.sel')
+          el?.scrollIntoView({ block: 'nearest' })
+        }, 10)
       } else if (!mod && !e.altKey && e.key.length === 1 && /[a-z0-9._ -]/i.test(e.key)) {
         if (handleTypeToSelect(e.key)) {
           e.preventDefault()

@@ -8,7 +8,7 @@ import { Icon } from './Icon'
 
 export function AddressRow() {
   const tab = useTab()
-  const { volumes, places, addressEditing, back, forward, up, refresh, go, setSearch, setAddressEditing } = useStore()
+  const { volumes, places, addressEditing, refreshing, back, forward, up, refresh, go, setSearch, setAddressEditing } = useStore()
   const loc = locOf(tab)
   const [notFound, setNotFound] = useState<string | null>(null)
 
@@ -62,7 +62,7 @@ export function AddressRow() {
         <button className="navbtn" disabled={isSpecial(loc)} onClick={up} aria-label="Up">
           <Icon name="u-up" />
         </button>
-        <button className="navbtn" onClick={refresh} aria-label="Refresh">
+        <button className={`navbtn${refreshing ? ' spinning' : ''}`} onClick={refresh} aria-label="Refresh">
           <Icon name="u-refresh" />
         </button>
       </div>

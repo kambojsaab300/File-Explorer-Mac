@@ -154,7 +154,7 @@ export interface TerminalExecResult {
 export interface KhojAPI {
   platform: NodeJS.Platform
   fs: {
-    list(dir: Path, o?: { hidden?: boolean }): Promise<Entry[]>
+    list(dir: Path, o?: { hidden?: boolean; refresh?: boolean }): Promise<Entry[]>
     stat(p: Path): Promise<Entry>
     properties(p: Path): Promise<FileProperties>
     setAttributes(p: Path, attrs: { hidden?: boolean; readonly?: boolean }): Promise<void>

@@ -63,7 +63,7 @@ export function registerIpc(): void {
     }
   })
 
-  ipcMain.handle('fs:list', (_, dir, opts) => fsService.list(path(dir), { hidden: !!opts?.hidden }))
+  ipcMain.handle('fs:list', (_, dir, opts) => fsService.list(path(dir), { hidden: !!opts?.hidden, refresh: !!opts?.refresh }))
   ipcMain.handle('fs:stat', (_, p) => fsService.stat(path(p)))
   ipcMain.handle('fs:properties', (_, p) => fsService.properties(path(p)))
   ipcMain.handle('fs:set-attributes', (_, p, attrs) => fsService.setAttributes(path(p), attrs ?? {}))

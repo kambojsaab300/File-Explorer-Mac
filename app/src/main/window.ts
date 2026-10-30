@@ -10,8 +10,9 @@ export function createMainWindow(opts: { macButtons: boolean }): BrowserWindow {
     // We draw Windows-style chrome ourselves; the OS title bar has to go.
     titleBarStyle: 'hidden',
     trafficLightPosition: { x: 14, y: 10 },
-    vibrancy: 'under-window',
-    visualEffectState: 'followWindow',
+    ...(process.platform === 'darwin'
+      ? { vibrancy: 'under-window' as const, visualEffectState: 'followWindow' as const }
+      : {}),
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#202020' : '#F3F3F3',
     show: false,
     webPreferences: {
