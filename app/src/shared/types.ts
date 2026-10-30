@@ -47,6 +47,16 @@ export type Conflict = 'replace' | 'skip' | 'keep-both' | 'ask'
 
 export type SpecialLocation = 'thispc' | 'home' | 'gallery' | 'network' | 'trash'
 
+export interface Places {
+  home: Path
+  desktop: Path
+  downloads: Path
+  documents: Path
+  pictures: Path
+  music: Path
+  videos: Path
+}
+
 type Unsubscribe = () => void
 
 export interface KhojAPI {
@@ -57,6 +67,7 @@ export interface KhojAPI {
     mkdir(parent: Path, name: string): Promise<Path>
     rename(p: Path, newName: string): Promise<Path>
     resolveInput(text: string): Promise<Path | SpecialLocation | null>
+    places(): Promise<Places>
   }
   ops: {
     copy(src: Path[], dest: Path, conflict: Conflict): Promise<string>
@@ -79,6 +90,7 @@ export interface KhojAPI {
     openTerminal(dir: Path): void
     copyPaths(paths: Path[], style: 'windows' | 'posix'): void
   }
+  // Phase 2 adds `ops`; until then it is absent at runtime.
   window: {
     minimize(): void
     toggleMaximize(): void

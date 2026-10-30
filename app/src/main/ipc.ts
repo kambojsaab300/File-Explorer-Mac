@@ -1,10 +1,30 @@
 import { BrowserWindow, ipcMain } from 'electron'
+import { isAbsolute } from 'node:path'
+import * as fsService from './services/fs.service'
+import * as shellService from './services/shell.service'
+import { getSetting, setSetting } from './services/settings.service'
+import { ejectVolume, listVolumes, watchVolumes } from './services/volumes.service'
 
-// Every channel the renderer can reach is registered here, so argument
-// validation has one home as the services are added.
+// The renderer is untrusted input: every path is checked before it reaches the file system.
+function path(p: unknown): string {
+  if (typeof p !== 'string' || !p || p.includes('\0') || !isAbsolute(p)) throw new Error('Invalid path')
+  return p
+}
+
+function fileName(n: unknown): string {
+  if (typeof n !== 'string' || !n.trim() || n.includes('\0') || n.includes('/') || n === '.' || n === '..') {
+    throw new Error('Invalid name')
+  }
+  return n
+}
+
+const paths = (list: unknown): string[] => {
+  if (!Array.isArray(list)) throw new Error('Invalid path list')
+  return list.map(path)
+}
+
 export function registerIpc(): void {
-  const fromSender = (e: Electron.IpcMainEvent): BrowserWindow | null =>
-    BrowserWindow.fromWebContents(e.sender)
+  const fromSender = (e: Electron.IpcMainEvent): BrowserWindow | null => BrowserWindow.fromWebContents(e.sender)
 
   ipcMain.on('window:minimize', (e) => fromSender(e)?.minimize())
   ipcMain.on('window:close', (e) => fromSender(e)?.close())
@@ -14,4 +34,27 @@ export function registerIpc(): void {
     if (win.isMaximized()) win.unmaximize()
     else win.maximize()
   })
+
+  ipcMain.handle('fs:list', (_, dir, opts) => fsService.list(path(dir), { hidden: !!opts?.hidden }))
+  ipcMain.handle('fs:stat', (_, p) => fsService.stat(path(p)))
+  ipcMain.handle('fs:mkdir', (_, parent, name) => fsService.mkdir(path(parent), fileName(name)))
+  ipcMain.handle('fs:rename', (_, p, name) => fsService.rename(path(p), fileName(name)))
+  ipcMain.handle('fs:resolve-input', (_, text) => fsService.resolveInput(String(text ?? '')))
+  ipcMain.handle('fs:places', () => fsService.places())
+
+  ipcMain.handle('volumes:list', () => listVolumes())
+  ipcMain.handle('volumes:eject', async (_, id) => {
+    const vol = (await listVolumes()).find((v) => v.id === id)
+    if (!vol?.ejectable) throw new Error('This drive cannot be ejected.')
+    await ejectVolume(vol.mount)
+  })
+  watchVolumes((vols) => BrowserWindow.getAllWindows().forEach((w) => w.webContents.send('volumes:changed', vols)))
+
+  ipcMain.handle('shell:open', (_, p) => shellService.open(path(p)))
+  ipcMain.on('shell:reveal', (_, p) => shellService.reveal(path(p)))
+  ipcMain.on('shell:open-terminal', (_, p) => shellService.openTerminal(path(p)))
+  ipcMain.on('shell:copy-paths', (_, list, style) => void shellService.copyPaths(paths(list), style === 'posix' ? 'posix' : 'windows'))
+
+  ipcMain.handle('settings:get', (_, key) => getSetting(String(key)))
+  ipcMain.handle('settings:set', (_, key, value) => setSetting(String(key), value))
 }
