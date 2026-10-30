@@ -3,6 +3,7 @@
   "productName": "Khoj",
   "version": "0.1.0",
   "description": "Windows 11 style file explorer for macOS",
+  "author": "Khoj Contributors",
   "main": "./out/main/index.js",
   "private": true,
   "scripts": {
@@ -10,7 +11,9 @@
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "dist:mac": "electron-vite build && electron-builder --mac --publish never"
+    "dist:mac": "electron-vite build && electron-builder --mac --publish never",
+    "dist:mac:arm64": "electron-vite build && electron-builder --mac --arm64 --publish never",
+    "dist:mac:universal": "electron-vite build && electron-builder --mac --universal --publish never"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

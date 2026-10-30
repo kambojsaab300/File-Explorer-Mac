@@ -1,0 +1,91 @@
+name: Build & Release macOS DMG (M1 Apple Silicon)
+
+on:
+  workflow_dispatch:
+    inputs:
+      arch:
+        description: 'Target Architecture (arm64 for M1/M2/M3 Apple Silicon, universal, or x64)'
+        required: true
+        default: 'arm64'
+        type: choice
+        options:
+          - arm64
+          - universal
+          - x64
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-mac:
+    name: Build macOS DMG (${{ github.event.inputs.arch || 'arm64' }})
+    runs-on: macos-14 # Native Apple Silicon M-series runner on GitHub Actions
+    defaults:
+      run:
+        working-directory: app
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          node node_modules/electron/install.js
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build web & electron bundle
+        run: npm run build
+
+      - name: Package macOS DMG & ZIP
+        env:
+          CSC_LINK: ${{ secrets.MAC_CERT_P12_BASE64 }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          TARGET_ARCH="${{ github.event.inputs.arch || 'arm64' }}"
+          echo "Building DMG for $TARGET_ARCH..."
+          if [ -n "$CSC_LINK" ]; then
+            echo "Signing with Developer ID credentials..."
+            npx electron-builder --mac --$TARGET_ARCH --publish never
+          else
+            echo "Building unsigned test DMG for personal testing..."
+            npx electron-builder --mac --$TARGET_ARCH --publish never -c.mac.identity=null -c.mac.hardenedRuntime=false -c.mac.notarize=false
+          fi
+
+      - name: List build artifacts
+        run: ls -lh dist/
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Khoj-${{ github.event.inputs.arch || 'arm64' }}-mac
+          path: |
+            app/dist/*.dmg
+            app/dist/*.zip
+            app/dist/*.blockmap
+          retention-days: 30
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            app/dist/*.dmg
+            app/dist/*.zip
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,18 +1,30 @@
 appId: com.khoj.explorer
 productName: Khoj
-directories: { output: dist, buildResources: build }
-files: ["out/**", "package.json"]
+copyright: "Copyright © 2026 Khoj Team"
+directories:
+  output: dist
+  buildResources: build
+files:
+  - "out/**"
+  - "package.json"
 asar: true
 mac:
   category: public.app-category.productivity
   target:
-    # Owner's Mac is an M1; switch to universal if Intel Macs need it.
-    - { target: dmg, arch: [arm64] }
+    - target: dmg
+      arch:
+        - arm64
+    - target: zip
+      arch:
+        - arm64
   icon: build/icon.icns
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.inherit.plist
   # Personal unsigned build. For distribution: set an identity, hardenedRuntime: true, notarize: true.
   identity: null
   hardenedRuntime: false
   notarize: false
+  gatekeeperAssess: false
   minimumSystemVersion: "13.0"
   extendInfo:
     NSDesktopFolderUsageDescription: Khoj needs access to your Desktop folder to show and manage your files.
@@ -20,11 +32,18 @@ mac:
     NSDownloadsFolderUsageDescription: Khoj needs access to your Downloads folder to show and manage your files.
     NSRemovableVolumesUsageDescription: Khoj needs access to USB and external drives to show and manage files on them.
     NSNetworkVolumesUsageDescription: Khoj needs access to network drives to show and manage files on them.
+    LSApplicationCategoryType: public.app-category.productivity
 dmg:
   title: "Khoj ${version}"
   background: build/dmg-background.png
   iconSize: 96
-  window: { width: 660, height: 400 }
+  window:
+    width: 660
+    height: 400
   contents:
-    - { x: 180, y: 200 }
-    - { x: 480, y: 200, type: link, path: /Applications }
+    - x: 180
+      y: 200
+    - x: 480
+      y: 200
+      type: link
+      path: /Applications
