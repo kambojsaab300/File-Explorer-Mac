@@ -2,6 +2,7 @@ import { app, shell } from 'electron'
 import { constants } from 'node:fs'
 import { copyFile, lstat, mkdir, readdir, readlink, rename, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
+import { normalize } from 'node:path'
 import type { Conflict, ConflictAnswer, ConflictRequest, OpProgress, OpResult, Path, TrashResult } from '@shared/types'
 import { baseName, joinPath, parentOf, variantName } from '@shared/paths'
 import { stat as entryOf } from './fs.service'
@@ -234,7 +235,8 @@ export async function trash(paths: Path[]): Promise<TrashResult[]> {
   const results: TrashResult[] = []
   for (const from of paths) {
     const at = Date.now()
-    await shell.trashItem(from)
+    // Electron's shell APIs want native separators (backslashes on a Windows dev box).
+    await shell.trashItem(normalize(from))
     results.push({ from, trashedTo: await locateInTrash(from, at) })
   }
   return results
