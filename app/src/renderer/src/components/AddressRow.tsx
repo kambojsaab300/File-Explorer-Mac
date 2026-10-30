@@ -12,6 +12,44 @@ export function AddressRow() {
   const loc = locOf(tab)
   const [notFound, setNotFound] = useState<string | null>(null)
 
+  const isTerminalCommand = (text: string): boolean => {
+    const t = text.trim().toLowerCase()
+    return (
+      t === 'cmd' ||
+      t === 'cmd.exe' ||
+      t === 'powershell' ||
+      t === 'powershell.exe' ||
+      t === 'pwsh' ||
+      t === 'terminal' ||
+      t === 'wt' ||
+      t === 'bash' ||
+      t === 'zsh' ||
+      t.startsWith('>') ||
+      t.startsWith('cmd ')
+    )
+  }
+
+  const openTerminalAtCurrent = (rawCmd?: string) => {
+    const currentPath = isSpecial(loc) ? (places?.home || '/') : loc
+    useStore.setState({ terminalOpen: true })
+    void api.terminal.setCwd(currentPath)
+
+    const cleanCmd = rawCmd?.trim()
+    if (cleanCmd && cleanCmd.startsWith('>')) {
+      const toRun = cleanCmd.slice(1).trim()
+      if (toRun) {
+        void api.terminal.exec(toRun, currentPath)
+      }
+    } else if (cleanCmd && cleanCmd.toLowerCase().startsWith('cmd ')) {
+      const toRun = cleanCmd.slice(4).trim()
+      if (toRun) {
+        void api.terminal.exec(toRun, currentPath)
+      }
+    }
+  }
+
+  const isCmdQuery = isTerminalCommand(tab.search)
+
   return (
     <div className="addressrow">
       <div className="navbtns">
@@ -34,6 +72,12 @@ export function AddressRow() {
           initial={toDisplay(loc, volumes)}
           onCancel={() => setAddressEditing(false)}
           onSubmit={async (text) => {
+            const trimmed = text.trim()
+            if (isTerminalCommand(trimmed)) {
+              setAddressEditing(false)
+              openTerminalAtCurrent(trimmed)
+              return
+            }
             const target = await api.fs.resolveInput(text)
             if (!target) return setNotFound(text)
             setAddressEditing(false)
@@ -46,16 +90,57 @@ export function AddressRow() {
         </div>
       )}
 
-      <label className="search">
-        <input
-          placeholder={`Search ${locLabel(loc, volumes, places)}`}
-          value={tab.search}
-          spellCheck={false}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => e.key === 'Escape' && setSearch('')}
-        />
-        <Icon name="u-search" />
-      </label>
+      <div className="search-wrap">
+        <label className="search">
+          <input
+            placeholder={`Search ${locLabel(loc, volumes, places)} (type 'cmd' + Enter)`}
+            value={tab.search}
+            spellCheck={false}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setSearch('')
+              } else if (e.key === 'Enter' && isCmdQuery) {
+                e.preventDefault()
+                openTerminalAtCurrent(tab.search)
+                setSearch('')
+              }
+            }}
+          />
+          <button
+            className="search-terminal-btn"
+            type="button"
+            title="Open Terminal in this folder (or type 'cmd' + Enter)"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              openTerminalAtCurrent()
+            }}
+          >
+            <Icon name="u-terminal" size={13} />
+          </button>
+          <Icon name="u-search" />
+        </label>
+
+        {isCmdQuery && (
+          <div
+            className="search-cmd-suggestion"
+            onMouseDown={(e) => {
+              e.preventDefault()
+              openTerminalAtCurrent(tab.search)
+              setSearch('')
+            }}
+          >
+            <span className="search-cmd-icon">
+              <Icon name="u-terminal" size={13} />
+            </span>
+            <span className="search-cmd-text">
+              Run in Terminal: <strong>{tab.search}</strong>
+            </span>
+            <span className="search-cmd-badge">↵ Enter</span>
+          </div>
+        )}
+      </div>
 
       {notFound && (
         <div className="toast" role="alert" onClick={() => setNotFound(null)}>
