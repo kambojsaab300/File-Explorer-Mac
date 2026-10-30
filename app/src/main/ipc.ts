@@ -121,7 +121,7 @@ export function registerIpc(): void {
     unwatchers.delete(key)
   })
 
-  ipcMain.on('clipboard:write-files', (_, list) => clipboard.writeFiles(paths(list)))
+  ipcMain.on('clipboard:write-files', (_, list) => void clipboard.writeFiles(paths(list)).catch(() => {}))
   ipcMain.handle('clipboard:read-files', () => clipboard.readFiles())
 
   ipcMain.on('app:mac-buttons', (e, on) => {
