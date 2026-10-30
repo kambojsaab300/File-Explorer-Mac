@@ -56,6 +56,7 @@ export function registerIpc(): void {
   ipcMain.handle('fs:stat', (_, p) => fsService.stat(path(p)))
   ipcMain.handle('fs:properties', (_, p) => fsService.properties(path(p)))
   ipcMain.handle('fs:set-attributes', (_, p, attrs) => fsService.setAttributes(path(p), attrs ?? {}))
+  ipcMain.handle('fs:read-preview', (_, p) => fsService.readPreview(path(p)))
   ipcMain.handle('fs:mkdir', (_, parent, name) => fsService.mkdir(path(parent), fileName(name)))
   ipcMain.handle('fs:rename', (_, p, name) => fsService.rename(path(p), fileName(name)))
   ipcMain.handle('fs:resolve-input', (_, text) => fsService.resolveInput(String(text ?? '')))

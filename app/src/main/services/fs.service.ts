@@ -1,7 +1,7 @@
 import { app } from 'electron'
 import type { Dirent, Stats } from 'node:fs'
-import { chmod, lstat, mkdir as mkdirFs, opendir, rename as renameFs, stat as statFs } from 'node:fs/promises'
-import type { Entry, FileProperties, Path, SpecialLocation } from '@shared/types'
+import { chmod, lstat, mkdir as mkdirFs, open as openFs, opendir, readFile, rename as renameFs, stat as statFs } from 'node:fs/promises'
+import type { Entry, FileProperties, Path, PreviewData, SpecialLocation } from '@shared/types'
 import { baseName, extOf, joinPath, parentOf, parseDisplay, toDisplay } from '@shared/paths'
 import { listVolumes } from './volumes.service'
 
@@ -182,4 +182,44 @@ export function places(): Record<string, Path> {
     music: get('music'),
     videos: get('videos')
   }
+}
+
+export async function readPreview(p: Path): Promise<PreviewData> {
+  const name = baseName(p)
+  const ext = extOf(name)
+  const textExts = new Set([
+    'txt', 'md', 'json', 'ts', 'js', 'tsx', 'jsx', 'html', 'css',
+    'sh', 'py', 'yml', 'yaml', 'xml', 'log', 'ini', 'conf', 'env', 'sql'
+  ])
+  const imageExts = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'])
+
+  try {
+    if (imageExts.has(ext)) {
+      const data = await readFile(p)
+      const mime = ext === 'svg' ? 'image/svg+xml' : `image/${ext === 'jpg' ? 'jpeg' : ext}`
+      return {
+        kind: 'image',
+        mime,
+        content: `data:${mime};base64,${data.toString('base64')}`
+      }
+    }
+
+    if (textExts.has(ext)) {
+      const fh = await openFs(p, 'r')
+      try {
+        const buf = Buffer.alloc(16 * 1024)
+        const { bytesRead } = await fh.read(buf, 0, buf.length, 0)
+        return {
+          kind: 'text',
+          content: buf.subarray(0, bytesRead).toString('utf8')
+        }
+      } finally {
+        await fh.close()
+      }
+    }
+  } catch {
+    // Unreadable
+  }
+
+  return { kind: 'binary' }
 }

@@ -63,6 +63,7 @@ export const mockApi: KhojAPI = {
       }
     },
     setAttributes: async () => {},
+    readPreview: async () => ({ kind: 'text', content: 'Mock preview content' }),
     mkdir: async (parent, name) => joinPath(parent, name),
     rename: async (p, name) => joinPath(p.slice(0, p.lastIndexOf('/')) || '/', name),
     resolveInput: async (text) => {

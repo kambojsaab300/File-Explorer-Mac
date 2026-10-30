@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+import type { PreviewData } from '@shared/types'
 import { toDisplay, parentOf } from '@shared/paths'
 import { api } from '@/api/client'
 import { fmtDate, iconOf, shortSize, typeOf } from '@/lib/format'
@@ -8,8 +10,26 @@ import { openEntry } from './MainArea'
 
 export function DetailsPane() {
   const tab = useTab()
-  const { volumes, places, refresh } = useStore()
+  const { volumes, places, refresh, prefs, togglePreview } = useStore()
   const loc = locOf(tab)
+
+  const selected = visibleEntries(tab).filter((e) => tab.sel.includes(e.path))
+  const single = selected.length === 1 ? selected[0] : null
+  const [preview, setPreview] = useState<PreviewData | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    if (single && single.kind === 'file') {
+      void api.fs.readPreview(single.path).then((res) => {
+        if (!cancelled) setPreview(res)
+      })
+    } else {
+      setPreview(null)
+    }
+    return () => {
+      cancelled = true
+    }
+  }, [single?.path])
 
   if (loc === 'thispc' && tab.sel.length === 1) {
     const v = volumes.find((x) => x.mount === tab.sel[0])
@@ -43,14 +63,16 @@ export function DetailsPane() {
     }
   }
 
-  const selected = visibleEntries(tab).filter((e) => tab.sel.includes(e.path))
-
   if (selected.length === 1) {
     const e = selected[0]
     return (
       <aside className="details">
-        <div className="dp-hero">
-          <Icon name={iconOf(e)} size={96} />
+        <div className="dp-hero" style={{ minHeight: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {preview?.kind === 'image' && preview.content ? (
+            <img src={preview.content} alt={e.name} style={{ maxWidth: '100%', maxHeight: 160, objectFit: 'contain', borderRadius: 4 }} />
+          ) : (
+            <Icon name={iconOf(e)} size={96} />
+          )}
         </div>
         <div className="dp-name">{e.name}</div>
         <div className="dp-type">{typeOf(e)}</div>
@@ -59,7 +81,33 @@ export function DetailsPane() {
             <Icon name="u-open-with" />
             Open
           </button>
+          <button className={`btn${prefs.previewPane ? ' primary' : ''}`} title="Toggle Preview (Alt+P)" onClick={togglePreview}>
+            <Icon name="u-preview-pane" />
+            Preview
+          </button>
         </div>
+        {prefs.previewPane && preview?.kind === 'text' && preview.content && (
+          <>
+            <div className="dp-h">Preview</div>
+            <pre
+              style={{
+                padding: '8px 10px',
+                background: 'var(--c-bg)',
+                borderRadius: 4,
+                maxHeight: 180,
+                overflow: 'auto',
+                fontSize: 11,
+                lineHeight: 1.4,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                border: '1px solid var(--c-overlay-border)',
+                margin: '0 12px 10px'
+              }}
+            >
+              {preview.content}
+            </pre>
+          </>
+        )}
         <div className="dp-h">Properties</div>
         <div className="kv">
           {e.kind === 'file' && (<><span className="k">Size</span><span className="v">{shortSize(e.size)}</span></>)}

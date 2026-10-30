@@ -47,6 +47,7 @@ export function MainArea() {
   if (loc === 'thispc') body = <ThisPC />
   else if (loc === 'home') body = <Home />
   else if (loc === 'gallery') body = <Gallery />
+  else if (loc === 'network') body = <NetworkView />
   else if (loc === 'trash') body = <FolderView />
   else if (isSpecial(loc)) body = <Placeholder loc={loc} />
   else if (tab.status === 'error') body = <ErrorState />
@@ -259,6 +260,94 @@ function Gallery() {
         <div className="empty" style={{ padding: '48px 0' }}>
           <Icon name="i-gallery" size={48} />
           <p style={{ marginTop: 12 }}>No pictures found in your Pictures folder.</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function NetworkView() {
+  const { volumes } = useStore()
+  const [mappingOpen, setMappingOpen] = useState(false)
+  const [server, setServer] = useState('')
+  const netDrives = volumes.filter((v) => v.kind === 'network')
+
+  return (
+    <div className="scroll">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: 14 }}>
+        <div className="ghead">
+          <Icon name="u-chevron-down" size={12} />
+          <span>Network locations</span>
+        </div>
+        <button className="btn" style={{ height: 28, fontSize: 12, gap: 6 }} onClick={() => setMappingOpen(true)}>
+          <Icon name="i-drive-network" size={16} />
+          Map network drive...
+        </button>
+      </div>
+
+      <div className="drives">
+        <div className="drive it" onDoubleClick={() => void api.shell.open('smb://')}>
+          <Icon name="i-network" size={48} />
+          <div className="meta">
+            <div className="n">Local Network</div>
+            <div className="free">Browse Bonjour &amp; SMB shares</div>
+          </div>
+        </div>
+        {netDrives.map((v) => (
+          <div key={v.id} className="drive it" onDoubleClick={() => useStore.getState().go(v.mount)}>
+            <Icon name="i-drive-network" size={48} />
+            <div className="meta">
+              <div className="n">{driveLabel(v)}</div>
+              <div className="free">Connected share</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {mappingOpen && (
+        <div className="scrim" onMouseDown={() => setMappingOpen(false)}>
+          <div className="dlg" role="dialog" onMouseDown={(e) => e.stopPropagation()} style={{ width: 480 }}>
+            <div className="bd">
+              <h2>Map Network Drive</h2>
+              <div className="muted" style={{ marginBottom: 14, fontSize: 13 }}>
+                What network folder would you like to map? Specify the server address (e.g. smb://server/share).
+              </div>
+              <div style={{ marginBottom: 8, fontSize: 13 }}>Folder address:</div>
+              <input
+                type="text"
+                placeholder="smb://192.168.1.100/share"
+                value={server}
+                onChange={(e) => setServer(e.target.value)}
+                style={{
+                  width: '100%',
+                  height: 32,
+                  padding: '0 8px',
+                  borderRadius: 4,
+                  border: '1px solid var(--c-overlay-border)',
+                  background: 'var(--c-bg)',
+                  color: 'var(--c-text)',
+                  fontSize: 13,
+                  marginBottom: 12
+                }}
+              />
+            </div>
+            <div className="ft">
+              <button
+                className="btn primary"
+                disabled={!server.trim()}
+                onClick={() => {
+                  setMappingOpen(false)
+                  const target = server.startsWith('smb://') ? server : `smb://${server}`
+                  void api.shell.open(target)
+                }}
+              >
+                Connect
+              </button>
+              <button className="btn" onClick={() => setMappingOpen(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

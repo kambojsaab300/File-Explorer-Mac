@@ -29,9 +29,18 @@ export interface Prefs {
   macButtons: boolean
   hidden: boolean
   extensions: boolean
+  lang: 'en' | 'hi'
+  previewPane: boolean
 }
 
-const DEFAULT_PREFS: Prefs = { theme: 'system', macButtons: false, hidden: false, extensions: true }
+const DEFAULT_PREFS: Prefs = {
+  theme: 'system',
+  macButtons: false,
+  hidden: false,
+  extensions: true,
+  lang: 'en',
+  previewPane: false
+}
 
 interface State {
   tabs: Tab[]
@@ -59,6 +68,7 @@ interface State {
   setSearch(q: string): void
   select(paths: string[], anchor?: string | null): void
   toggleDetails(): void
+  togglePreview(): void
   setAddressEditing(v: boolean): void
 }
 
@@ -210,6 +220,11 @@ export const useStore = create<State>((set, get) => {
     },
     select: (sel, anchor) => patchTab(current().id, { sel, ...(anchor !== undefined && { anchor }) }),
     toggleDetails: () => set((s) => ({ detailsPane: !s.detailsPane })),
+    togglePreview: () =>
+      set((s) => ({
+        detailsPane: true,
+        prefs: { ...s.prefs, previewPane: !s.prefs.previewPane }
+      })),
     setAddressEditing: (addressEditing) => set({ addressEditing })
   }
 })

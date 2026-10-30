@@ -30,6 +30,12 @@ export interface Volume {
   ejectable: boolean
 }
 
+export interface PreviewData {
+  kind: 'text' | 'image' | 'binary'
+  mime?: string
+  content?: string
+}
+
 export interface OpProgress {
   opId: string
   kind: 'copy' | 'move' | 'delete'
@@ -116,6 +122,7 @@ export interface KhojAPI {
     stat(p: Path): Promise<Entry>
     properties(p: Path): Promise<FileProperties>
     setAttributes(p: Path, attrs: { hidden?: boolean; readonly?: boolean }): Promise<void>
+    readPreview(p: Path): Promise<PreviewData>
     mkdir(parent: Path, name: string): Promise<Path>
     rename(p: Path, newName: string): Promise<Path>
     resolveInput(text: string): Promise<Path | SpecialLocation | null>

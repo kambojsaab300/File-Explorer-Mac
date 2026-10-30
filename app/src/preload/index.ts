@@ -16,6 +16,7 @@ const api: KhojAPI = {
     stat: (p) => ipcRenderer.invoke('fs:stat', p),
     properties: (p) => ipcRenderer.invoke('fs:properties', p),
     setAttributes: (p, attrs) => ipcRenderer.invoke('fs:set-attributes', p, attrs),
+    readPreview: (p) => ipcRenderer.invoke('fs:read-preview', p),
     mkdir: (parent, name) => ipcRenderer.invoke('fs:mkdir', parent, name),
     rename: (p, name) => ipcRenderer.invoke('fs:rename', p, name),
     resolveInput: (text) => ipcRenderer.invoke('fs:resolve-input', text),

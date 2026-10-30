@@ -17,6 +17,7 @@ export function useShortcuts(): void {
       else if (e.altKey && e.key === 'ArrowRight') s.forward()
       else if (e.altKey && e.key === 'ArrowUp') s.up()
       else if (e.altKey && e.shiftKey && key === 'p') s.toggleDetails()
+      else if (e.altKey && key === 'p') s.togglePreview()
       else if ((e.altKey && e.key === 'Enter') || (mod && key === 'i')) void showProperties()
       else if (e.key === 'F5') s.refresh()
       else if (mod && key === 't') s.newTab()

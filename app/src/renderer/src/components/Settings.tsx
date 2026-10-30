@@ -20,6 +20,13 @@ export function OptionsDialog() {
         <div className="bd">
           <h2>Options</h2>
           <label className="opt-row">
+            <span>Language</span>
+            <select value={prefs.lang ?? 'en'} onChange={(e) => setPref('lang', e.target.value as Prefs['lang'])}>
+              <option value="en">English</option>
+              <option value="hi">हिंदी (Hindi)</option>
+            </select>
+          </label>
+          <label className="opt-row">
             <span>App theme</span>
             <select value={prefs.theme} onChange={(e) => setPref('theme', e.target.value as Prefs['theme'])}>
               <option value="system">Use system setting</option>
@@ -32,6 +39,7 @@ export function OptionsDialog() {
           )}
           <Toggle label="Show hidden items" on={prefs.hidden} onChange={(v) => setPref('hidden', v)} />
           <Toggle label="Show file name extensions" on={prefs.extensions} onChange={(v) => setPref('extensions', v)} />
+          <Toggle label="Show Preview pane (Alt+P)" on={prefs.previewPane} onChange={(v) => setPref('previewPane', v)} />
         </div>
         <div className="ft">
           <button className="btn primary" onClick={close}>
