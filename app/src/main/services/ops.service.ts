@@ -299,3 +299,13 @@ export async function extract(zipPath: Path, destDir?: Path): Promise<Path> {
 
   return target
 }
+
+export async function emptyTrash(): Promise<void> {
+  if (process.platform === 'darwin') {
+    await execFileAsync('osascript', ['-e', 'tell application "Finder" to empty trash']).catch(async () => {
+      const trashDir = joinPath(app.getPath('home').replace(/\\/g, '/'), '.Trash')
+      const entries = await readdir(trashDir).catch(() => [])
+      for (const e of entries) await rm(joinPath(trashDir, e), { recursive: true, force: true }).catch(() => {})
+    })
+  }
+}

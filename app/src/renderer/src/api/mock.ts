@@ -93,6 +93,7 @@ export const mockApi: KhojAPI = {
     newFile: async (parent, name) => joinPath(parent, name),
     compress: async (paths, dest) => dest ?? `${paths[0]}.zip`,
     extract: async (p, dest) => dest ?? p.replace(/\.zip$/, ''),
+    emptyTrash: async () => {},
     pause: () => {}, resume: () => {}, cancel: () => {},
     onProgress: () => () => {},
     onConflict: () => () => {}

@@ -1,7 +1,7 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import type { Entry } from '@shared/types'
-import { isSpecial, parentOf, toDisplay } from '@shared/paths'
+import { baseName, isSpecial, parentOf, toDisplay } from '@shared/paths'
 import { api } from '@/api/client'
 import { fmtDate, iconOf, kbSize, shortSize, typeOf } from '@/lib/format'
 import { driveIcon, driveLabel, knownFolders } from '@/lib/locations'
@@ -46,6 +46,8 @@ export function MainArea() {
   let body: React.ReactNode
   if (loc === 'thispc') body = <ThisPC />
   else if (loc === 'home') body = <Home />
+  else if (loc === 'gallery') body = <Gallery />
+  else if (loc === 'trash') body = <FolderView />
   else if (isSpecial(loc)) body = <Placeholder loc={loc} />
   else if (tab.status === 'error') body = <ErrorState />
   else body = <FolderView />
@@ -97,7 +99,36 @@ function ThisPC() {
 }
 
 function Home() {
-  const { places, go } = useStore()
+  const { places, volumes, go, pinned } = useStore()
+  const [tab, setTab] = useState<'recent' | 'favorites'>('recent')
+  const [recents, setRecents] = useState<Entry[]>([])
+  const [loading, setLoading] = useState(false)
+
+  const quick = Object.entries(knownFolders(places))
+  const customPinned = (pinned ?? []).filter((p) => !quick.some(([loc]) => loc === p))
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadRecent(): Promise<void> {
+      if (!places) return
+      setLoading(true)
+      try {
+        const targets = [places.desktop, places.documents, places.downloads]
+        const lists = await Promise.all(targets.map((dir) => api.fs.list(dir).catch(() => [])))
+        if (cancelled) return
+        const files = lists.flat().filter((e) => e.kind === 'file')
+        files.sort((a, b) => b.mtimeMs - a.mtimeMs)
+        setRecents(files.slice(0, 15))
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    void loadRecent()
+    return () => {
+      cancelled = true
+    }
+  }, [places])
+
   return (
     <div className="scroll">
       <div className="ghead">
@@ -105,7 +136,7 @@ function Home() {
         <span>Quick access</span>
       </div>
       <div className="qa">
-        {Object.entries(knownFolders(places)).map(([loc, k]) => (
+        {quick.map(([loc, k]) => (
           <div key={loc} className="it" onDoubleClick={() => go(loc)}>
             <Icon name={k.icon} size={48} />
             <div>
@@ -114,7 +145,122 @@ function Home() {
             </div>
           </div>
         ))}
+        {customPinned.map((p) => (
+          <div key={p} className="it" onDoubleClick={() => go(p)}>
+            <Icon name="i-folder-pinned" size={48} />
+            <div>
+              <div>{baseName(p)}</div>
+              <div className="sub">Pinned folder</div>
+            </div>
+          </div>
+        ))}
       </div>
+
+      <div className="pills" style={{ marginTop: 12 }}>
+        <button className={`pill${tab === 'recent' ? ' on' : ''}`} onClick={() => setTab('recent')}>
+          Recent
+        </button>
+        <button className={`pill${tab === 'favorites' ? ' on' : ''}`} onClick={() => setTab('favorites')}>
+          Favorites
+        </button>
+      </div>
+
+      {tab === 'recent' && (
+        <div className="v-details" style={{ margin: '0 12px 24px' }}>
+          <div className="hdr">
+            <div>Name</div>
+            <div>Date modified</div>
+            <div>Location</div>
+            <div>Size</div>
+          </div>
+          <div className="items">
+            {recents.map((e) => (
+              <div key={e.path} className="it" onDoubleClick={() => openEntry(e)}>
+                <div>
+                  <Icon name={iconOf(e)} />
+                  <span className="nm">{e.name}</span>
+                </div>
+                <div>{fmtDate(e.mtimeMs)}</div>
+                <div>{toDisplay(parentOf(e.path) ?? '/', volumes)}</div>
+                <div>{kbSize(e.size)}</div>
+              </div>
+            ))}
+            {!recents.length && !loading && (
+              <div className="empty" style={{ padding: '24px 0' }}>
+                No recent files found.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {tab === 'favorites' && (
+        <div className="empty" style={{ padding: '36px 0' }}>
+          Right-click any folder to pin it to Quick access, or star files to see them here.
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Gallery() {
+  const { places } = useStore()
+  const [images, setImages] = useState<Entry[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadImages(): Promise<void> {
+      if (!places?.pictures) return
+      setLoading(true)
+      try {
+        const entries = await api.fs.list(places.pictures, { hidden: false }).catch(() => [])
+        const imageExts = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'svg', 'bmp'])
+        const filtered = entries.filter((e) => e.kind === 'file' && imageExts.has(e.ext))
+        filtered.sort((a, b) => b.mtimeMs - a.mtimeMs)
+        if (!cancelled) setImages(filtered)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    void loadImages()
+    return () => {
+      cancelled = true
+    }
+  }, [places?.pictures])
+
+  const groups: Record<string, Entry[]> = {}
+  for (const img of images) {
+    const d = new Date(img.mtimeMs)
+    const key = d.toLocaleString('en-US', { month: 'long', year: 'numeric' })
+    if (!groups[key]) groups[key] = []
+    groups[key].push(img)
+  }
+
+  return (
+    <div className="scroll">
+      {Object.entries(groups).map(([month, items]) => (
+        <div key={month} style={{ marginBottom: 16 }}>
+          <div className="ghead">
+            <Icon name="u-chevron-down" size={12} />
+            <span>{month}</span>
+          </div>
+          <div className="gal">
+            {items.map((e) => (
+              <div key={e.path} className="it" title={e.name} onDoubleClick={() => openEntry(e)}>
+                <Icon name={iconOf(e)} size={64} />
+                <span className="gal-name">{e.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+      {!images.length && !loading && (
+        <div className="empty" style={{ padding: '48px 0' }}>
+          <Icon name="i-gallery" size={48} />
+          <p style={{ marginTop: 12 }}>No pictures found in your Pictures folder.</p>
+        </div>
+      )}
     </div>
   )
 }
@@ -143,11 +289,9 @@ function ErrorState() {
 
 function Placeholder({ loc }: { loc: string }) {
   const text: Record<string, string> = {
-    gallery: 'Gallery arrives in version 1.1.',
-    network: 'Network locations arrive in version 1.1.',
-    trash: 'Trash browsing arrives with file operations.'
+    network: 'Network locations arrive with SMB discovery.'
   }
-  return <div className="empty">{text[loc]}</div>
+  return <div className="empty">{text[loc] ?? 'This location is empty.'}</div>
 }
 
 function FolderView() {

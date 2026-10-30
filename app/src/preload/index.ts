@@ -51,6 +51,7 @@ const api: KhojAPI = {
     newFile: (parent, name) => ipcRenderer.invoke('ops:new-file', parent, name),
     compress: (sources, destZip) => ipcRenderer.invoke('ops:compress', sources, destZip),
     extract: (zipPath, destDir) => ipcRenderer.invoke('ops:extract', zipPath, destDir),
+    emptyTrash: () => ipcRenderer.invoke('ops:empty-trash'),
     pause: (id) => ipcRenderer.send('ops:pause', id),
     resume: (id) => ipcRenderer.send('ops:resume', id),
     cancel: (id) => ipcRenderer.send('ops:cancel', id),

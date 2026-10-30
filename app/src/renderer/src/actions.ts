@@ -309,3 +309,21 @@ export async function runExtract(zipPath: Path, destDir: Path, openFolder: boole
     fail(e)
   }
 }
+
+export function emptyTrash(): void {
+  set({
+    confirm: {
+      title: 'Empty Recycle Bin',
+      message: 'Are you sure you want to permanently delete all items in the Recycle Bin?',
+      yes: 'Empty Recycle Bin',
+      onYes: async () => {
+        try {
+          await api.ops.emptyTrash()
+          refresh()
+        } catch (e) {
+          fail(e)
+        }
+      }
+    }
+  })
+}

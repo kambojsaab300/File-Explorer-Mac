@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { compressSelected, copy, currentDir, deleteSelected, paste, showProperties, startRename, useOps } from '@/actions'
-import { useStore, type View } from '@/store'
+import { compressSelected, copy, currentDir, deleteSelected, emptyTrash, paste, showProperties, startRename, useOps } from '@/actions'
+import { locOf, useStore, type View } from '@/store'
 import { Icon } from './Icon'
 
 const VIEWS: [View, string, string][] = [
@@ -43,6 +43,15 @@ export function CommandBar() {
         <Icon name="u-chevron-down" size={12} />
       </button>
       <span className="sep-v" />
+      {locOf(tab) === 'trash' && (
+        <>
+          <button className="cmd" onClick={emptyTrash}>
+            <Icon name="u-delete" />
+            <span className="lbl">Empty Recycle Bin</span>
+          </button>
+          <span className="sep-v" />
+        </>
+      )}
       {ops.map(([icon, label, enabled, run]) => (
         <button key={label} className="cmd" disabled={!enabled} title={label} onClick={run}>
           <Icon name={icon} />

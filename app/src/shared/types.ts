@@ -144,6 +144,7 @@ export interface KhojAPI {
     newFile(parent: Path, name: string): Promise<Path>
     compress(sources: Path[], destZip?: Path): Promise<Path>
     extract(zipPath: Path, destDir?: Path): Promise<Path>
+    emptyTrash(): Promise<void>
     pause(opId: string): void
     resume(opId: string): void
     cancel(opId: string): void

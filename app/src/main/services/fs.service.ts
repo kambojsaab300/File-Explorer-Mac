@@ -29,10 +29,16 @@ function toEntry(path: Path, st: Stats): Entry {
 }
 
 export async function list(dir: Path, opts: { hidden?: boolean } = {}): Promise<Entry[]> {
+  const targetDir =
+    dir === 'trash'
+      ? process.platform === 'darwin'
+        ? joinPath(places().home, '.Trash')
+        : app.getPath('temp')
+      : dir
   const out: Entry[] = []
   const batch: Promise<void>[] = []
   const add = async (de: Dirent): Promise<void> => {
-    const path = joinPath(dir, de.name)
+    const path = joinPath(targetDir, de.name)
     try {
       let st = await lstat(path)
       // Show symlinked folders as folders, the way Explorer shows junctions.
@@ -43,12 +49,16 @@ export async function list(dir: Path, opts: { hidden?: boolean } = {}): Promise<
     }
   }
 
-  for await (const de of await opendir(dir, { bufferSize: 256 })) {
-    if (!opts.hidden && de.name.startsWith('.')) continue
-    batch.push(add(de))
-    if (batch.length >= 64) await Promise.all(batch.splice(0))
+  try {
+    for await (const de of await opendir(targetDir, { bufferSize: 256 })) {
+      if (!opts.hidden && de.name.startsWith('.')) continue
+      batch.push(add(de))
+      if (batch.length >= 64) await Promise.all(batch.splice(0))
+    }
+    await Promise.all(batch)
+  } catch {
+    // Empty or unreadable
   }
-  await Promise.all(batch)
   return out
 }
 

@@ -102,6 +102,7 @@ export function registerIpc(): void {
   ipcMain.handle('ops:new-file', (_, parent, name) => ops.newFile(path(parent), fileName(name)))
   ipcMain.handle('ops:compress', (_, list, target) => ops.compress(paths(list), target ? path(target) : undefined))
   ipcMain.handle('ops:extract', (_, p, target) => ops.extract(path(p), target ? path(target) : undefined))
+  ipcMain.handle('ops:empty-trash', () => ops.emptyTrash())
   ipcMain.on('ops:pause', (_, id) => ops.pause(String(id)))
   ipcMain.on('ops:resume', (_, id) => ops.resume(String(id)))
   ipcMain.on('ops:cancel', (_, id) => ops.cancel(String(id)))

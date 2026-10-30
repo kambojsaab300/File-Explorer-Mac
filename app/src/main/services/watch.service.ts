@@ -1,8 +1,12 @@
+import { execFile } from 'node:child_process'
 import { watch, type FSWatcher } from 'node:fs'
 import { opendir } from 'node:fs/promises'
+import { promisify } from 'node:util'
 import type { Entry, Path } from '@shared/types'
 import { joinPath } from '@shared/paths'
 import { stat as entryOf } from './fs.service'
+
+const execFileAsync = promisify(execFile)
 
 // One watcher per open folder (not recursive), shared by every tab showing it.
 const watchers = new Map<Path, { watcher: FSWatcher; listeners: Set<() => void>; timer?: NodeJS.Timeout }>()
@@ -52,6 +56,27 @@ export async function search(root: Path, query: string, showHidden = false): Pro
   const q = query.trim().toLowerCase()
   const out: Entry[] = []
   if (!q) return out
+
+  // On macOS, try Spotlight index first (mdfind) for instant search
+  if (process.platform === 'darwin') {
+    try {
+      const { stdout } = await execFileAsync('mdfind', ['-onlyin', root, '-name', query], {
+        signal: ctrl.signal,
+        timeout: 4000
+      })
+      const lines = stdout.split('\n').map((l) => l.trim()).filter(Boolean)
+      if (lines.length) {
+        for (const line of lines.slice(0, MAX_RESULTS)) {
+          if (ctrl.signal.aborted) return []
+          const e = await entryOf(line).catch(() => null)
+          if (e && (showHidden || !e.hidden)) out.push(e)
+        }
+        return out
+      }
+    } catch {
+      // Fallback to BFS recursive scan if unindexed
+    }
+  }
 
   // Breadth-first so near matches show up before deep ones when the cap is hit.
   const queue: Path[] = [root]
